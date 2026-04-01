@@ -51,11 +51,7 @@ export default function DashboardLayout({
       {/* Sidebar - Desktop */}
       <aside className="hidden md:block w-64 bg-navy/80 border-r border-light-lavender/20 p-4 shrink-0">
         <div className="mb-6 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="h-8 w-8 text-primary-blue" />
-            <span className="text-lg font-bold text-white">SMSReseller</span>
-          </div>
-          <p className="text-light-lavender text-xs">Welcome, {session.user?.name || 'User'}</p>
+          <p className="text-white font-medium">{session.user?.name || 'User'}</p>
           <p className="text-light-lavender/50 text-xs truncate">{session.user?.email}</p>
         </div>
 
