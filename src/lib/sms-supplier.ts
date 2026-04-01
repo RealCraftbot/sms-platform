@@ -1,8 +1,10 @@
 import { getSMSPool } from "./smspool"
 import { getSMSPinVerify } from "./smspinverify"
 import { getSMSActivate } from "./smsactivate"
+import { getAcctShop } from "./acctshop"
+import { getTutAds } from "./tutads"
 
-export type Supplier = "smspool" | "smspinverify" | "smsactivate"
+export type Supplier = "smspool" | "smspinverify" | "smsactivate" | "acctshop" | "tutads"
 
 export interface SMSResult {
   success: boolean
@@ -32,6 +34,10 @@ export function getSupplier(type: Supplier): SMSSupplier {
       return getSMSPinVerify()
     case "smsactivate":
       return getSMSActivate()
+    case "acctshop":
+      return getAcctShop()
+    case "tutads":
+      return getTutAds()
     default:
       throw new Error(`Unknown SMS supplier: ${type}`)
   }

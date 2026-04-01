@@ -6,15 +6,23 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-
-interface Settings {
-  smsSupplier: string
-}
+import { ExternalLink, ShoppingCart, Globe, Server } from "lucide-react"
 
 const suppliers = [
-  { id: "smspool", name: "SMSPool", status: "active" },
-  { id: "smspinverify", name: "SMSPinVerify", status: "active" },
-  { id: "smsactivate", name: "SMS-Activate", status: "active" },
+  { id: "smspool", name: "SMSPool", description: "SMS & Verification", category: "sms" },
+  { id: "smspinverify", name: "SMSPinVerify", description: "SMS & Verification", category: "sms" },
+  { id: "smsactivate", name: "SMS-Activate", description: "SMS & Verification", category: "sms" },
+  { id: "acctshop", name: "AcctShop", description: "Social Media Accounts", category: "social" },
+  { id: "tutads", name: "TutAds", description: "Social Media & Services", category: "social" },
+]
+
+const externalServices = [
+  { 
+    name: "BabyMaker VPN & Entertainment", 
+    url: "https://babymaker.sellpass.io", 
+    description: "VPN and entertainment services (no API integration)",
+    category: "vpn"
+  },
 ]
 
 export default function SettingsPage() {
@@ -55,6 +63,9 @@ export default function SettingsPage() {
     }
   }
 
+  const smsSuppliers = suppliers.filter(s => s.category === "sms")
+  const socialSuppliers = suppliers.filter(s => s.category === "social")
+
   if (loading) {
     return <div>Loading settings...</div>
   }
@@ -62,15 +73,18 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">SMS Supplier Settings</h1>
-        <p className="text-muted-foreground">Configure which SMS provider to use</p>
+        <h1 className="text-3xl font-bold text-white">Service Settings</h1>
+        <p className="text-light-lavender">Configure API suppliers and external services</p>
       </div>
 
-      <Card>
+      <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Active SMS Supplier</CardTitle>
-          <CardDescription>
-            Select which SMS supplier to use for phone numbers. Switch if one is down.
+          <div className="flex items-center gap-2">
+            <Server className="h-5 w-5 text-primary-blue" />
+            <CardTitle className="text-white">SMS & Verification Suppliers</CardTitle>
+          </div>
+          <CardDescription className="text-light-lavender">
+            Select which SMS provider to use for phone numbers
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -79,14 +93,15 @@ export default function SettingsPage() {
             onValueChange={setCurrentSupplier}
             className="space-y-4"
           >
-            {suppliers.map(supplier => (
-              <div key={supplier.id} className="flex items-center space-x-4 p-4 border rounded-lg">
-                <RadioGroupItem value={supplier.id} id={supplier.id} />
+            {smsSuppliers.map(supplier => (
+              <div key={supplier.id} className="flex items-center space-x-4 p-4 border border-light-lavender/20 rounded-lg bg-white/5">
+                <RadioGroupItem value={supplier.id} id={supplier.id} className="border-light-lavender" />
                 <Label htmlFor={supplier.id} className="flex-1 cursor-pointer">
-                  <span className="font-medium">{supplier.name}</span>
+                  <span className="font-medium text-white">{supplier.name}</span>
+                  <span className="text-light-lavender text-sm ml-2">- {supplier.description}</span>
                 </Label>
                 {currentSupplier === supplier.id && (
-                  <Badge variant="default">Active</Badge>
+                  <Badge variant="default" className="bg-mint-green text-navy">Active</Badge>
                 )}
               </div>
             ))}
@@ -95,24 +110,93 @@ export default function SettingsPage() {
           <Button 
             onClick={saveSettings} 
             disabled={saving}
-            className="mt-6"
+            className="mt-6 bg-mint-green text-navy hover:bg-mint-green/80"
           >
             {saving ? "Saving..." : "Save Settings"}
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Supplier Status</CardTitle>
-          <CardDescription>Current status of all SMS suppliers</CardDescription>
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-mint-green" />
+            <CardTitle className="text-white">Social Media Suppliers</CardTitle>
+          </div>
+          <CardDescription className="text-light-lavender">
+            Select which social media API to use for accounts
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
+          <RadioGroup 
+            value={currentSupplier} 
+            onValueChange={setCurrentSupplier}
+            className="space-y-4"
+          >
+            {socialSuppliers.map(supplier => (
+              <div key={supplier.id} className="flex items-center space-x-4 p-4 border border-light-lavender/20 rounded-lg bg-white/5">
+                <RadioGroupItem value={supplier.id} id={supplier.id} className="border-light-lavender" />
+                <Label htmlFor={supplier.id} className="flex-1 cursor-pointer">
+                  <span className="font-medium text-white">{supplier.name}</span>
+                  <span className="text-light-lavender text-sm ml-2">- {supplier.description}</span>
+                </Label>
+                {currentSupplier === supplier.id && (
+                  <Badge variant="default" className="bg-mint-green text-navy">Active</Badge>
+                )}
+              </div>
+            ))}
+          </RadioGroup>
+          
+          <Button 
+            onClick={saveSettings} 
+            disabled={saving}
+            className="mt-6 bg-mint-green text-navy hover:bg-mint-green/80"
+          >
+            {saving ? "Saving..." : "Save Settings"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-navy/50 border-light-lavender/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-lime-yellow" />
+            <CardTitle className="text-white">External Services</CardTitle>
+          </div>
+          <CardDescription className="text-light-lavender">
+            Services without API integration - open in new tab
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {externalServices.map((service, index) => (
+            <div key={index} className="flex items-center justify-between p-4 border border-light-lavender/20 rounded-lg bg-white/5">
+              <div>
+                <span className="font-medium text-white">{service.name}</span>
+                <span className="text-light-lavender text-sm ml-2">- {service.description}</span>
+              </div>
+              <a 
+                href={service.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-mint-green hover:underline"
+              >
+                Visit <ExternalLink size={16} />
+              </a>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-navy/50 border-light-lavender/20">
+        <CardHeader>
+          <CardTitle className="text-white">All Active Suppliers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {suppliers.map(supplier => (
-              <div key={supplier.id} className="flex items-center justify-between p-3 bg-muted rounded">
-                <span className="font-medium">{supplier.name}</span>
-                <Badge variant={currentSupplier === supplier.id ? "success" : "secondary"}>
+              <div key={supplier.id} className="flex items-center justify-between p-3 bg-white/5 rounded">
+                <span className="font-medium text-white text-sm">{supplier.name}</span>
+                <Badge variant={currentSupplier === supplier.id ? "default" : "secondary"} className={currentSupplier === supplier.id ? "bg-mint-green text-navy" : ""}>
                   {currentSupplier === supplier.id ? "Active" : "Inactive"}
                 </Badge>
               </div>
