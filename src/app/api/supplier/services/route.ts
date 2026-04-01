@@ -57,7 +57,16 @@ export async function GET() {
         supplier.getCountries(),
       ])
       
-      let pricingRules = []
+      type PricingRule = {
+        id: string
+        service: string
+        country: string
+        basePrice: any
+        finalPrice: any
+        isActive: boolean
+      }
+      
+      let pricingRules: PricingRule[] = []
       try {
         pricingRules = await prisma.pricingRule.findMany({
           where: { isActive: true }
