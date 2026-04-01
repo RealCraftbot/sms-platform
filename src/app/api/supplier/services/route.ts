@@ -3,35 +3,68 @@ import { prisma } from "@/lib/prisma"
 import { getSupplier, Supplier } from "@/lib/sms-supplier"
 
 async function getActiveSupplier(): Promise<Supplier> {
-  const setting = await prisma.setting.findUnique({
-    where: { key: "smsSupplier" },
-  })
-  return (setting?.value as Supplier) || "smspool"
+  try {
+    const setting = await prisma.setting.findUnique({
+      where: { key: "smsSupplier" },
+    })
+    return (setting?.value as Supplier) || "smspool"
+  } catch (error) {
+    console.error("Database error getting supplier setting:", error)
+    return "smspool"
+  }
+}
+
+function isValidApiKey(key: string | undefined): boolean {
+  if (!key) return false
+  if (key.startsWith("your-")) return false
+  if (key.length < 10) return false
+  return true
 }
 
 export async function GET() {
   try {
     const supplierType = await getActiveSupplier()
     
-    const smsApiKey = process.env.SMSPOOL_API_KEY
-    if (!smsApiKey || smsApiKey === "your-smspool-api-key") {
+    // Check if API key is configured for the active supplier
+    let apiKey: string | undefined
+    if (supplierType === "smspool") {
+      apiKey = process.env.SMSPOOL_API_KEY
+    } else if (supplierType === "smspinverify") {
+      apiKey = process.env.SMSPINVERIFY_API_KEY
+    } else if (supplierType === "smsactivate") {
+      apiKey = process.env.SMSACTIVATE_API_KEY
+    } else if (supplierType === "acctshop") {
+      apiKey = process.env.ACCTSHOP_API_KEY
+    } else if (supplierType === "tutads") {
+      apiKey = process.env.TUTADS_API_KEY
+    }
+    
+    if (!isValidApiKey(apiKey)) {
+      console.log("API key not configured for supplier:", supplierType)
       return NextResponse.json({
         services: getFallbackServices(),
         countries: getFallbackCountries(),
         supplier: supplierType,
-        message: "SMS API key not configured - showing default services"
+        message: `${supplierType} API key not configured - showing default services`
       })
     }
 
     try {
       const supplier = getSupplier(supplierType)
       
-      const services = await supplier.getServices()
-      const countries = await supplier.getCountries()
+      const [services, countries] = await Promise.all([
+        supplier.getServices(),
+        supplier.getCountries(),
+      ])
       
-      const pricingRules = await prisma.pricingRule.findMany({
-        where: { isActive: true }
-      })
+      let pricingRules = []
+      try {
+        pricingRules = await prisma.pricingRule.findMany({
+          where: { isActive: true }
+        })
+      } catch (e) {
+        console.log("Could not fetch pricing rules:", e)
+      }
 
       const servicesWithPricing = services.map(service => {
         const serviceRules = pricingRules.filter(r => r.service === service.id)
@@ -120,15 +153,5 @@ function getFallbackCountries() {
     { id: "jp", name: "Japan", code: "+81" },
     { id: "kr", name: "South Korea", code: "+82" },
     { id: "au", name: "Australia", code: "+61" },
-    { id: "nl", name: "Netherlands", code: "+31" },
-    { id: "se", name: "Sweden", code: "+46" },
-    { id: "no", name: "Norway", code: "+47" },
-    { id: "pl", name: "Poland", code: "+48" },
-    { id: "tr", name: "Turkey", code: "+90" },
-    { id: "eg", name: "Egypt", code: "+20" },
-    { id: "ae", name: "UAE", code: "+971" },
-    { id: "sa", name: "Saudi Arabia", code: "+966" },
-    { id: "th", name: "Thailand", code: "+66" },
-    { id: "vn", name: "Vietnam", code: "+84" },
   ]
 }

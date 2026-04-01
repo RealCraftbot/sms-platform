@@ -3,8 +3,10 @@ import { getSMSPinVerify } from "./smspinverify"
 import { getSMSActivate } from "./smsactivate"
 import { getAcctShop } from "./acctshop"
 import { getTutAds } from "./tutads"
+import { getAccSMTP } from "./accsmtp"
 
 export type Supplier = "smspool" | "smspinverify" | "smsactivate" | "acctshop" | "tutads"
+export type SocialSupplier = "tutads" | "accsmtp"
 
 export interface SMSResult {
   success: boolean
@@ -37,6 +39,15 @@ export interface SMSSupplier {
   buyNumber(service: string, country: string): Promise<SMSResult>
   getSms(orderId: string): Promise<SMSCheckResult>
   cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }>
+  getBalance?(): Promise<number>
+}
+
+export interface SocialSupplier {
+  getProducts(): Promise<{ categories: any[]; products: any[] }>
+  getProduct?(productId: number): Promise<any>
+  buyProduct(productId: number, amount: number): Promise<{ success: boolean; accounts?: string[]; message?: string }>
+  getOrder?(orderId: string): Promise<any>
+  getBalance(): Promise<number>
 }
 
 export function getSupplier(type: Supplier): SMSSupplier {
@@ -50,8 +61,19 @@ export function getSupplier(type: Supplier): SMSSupplier {
     case "acctshop":
       return getAcctShop()
     case "tutads":
-      return getTutAds()
+      return getTutAds() as unknown as SMSSupplier
     default:
       return getSMSPool()
+  }
+}
+
+export function getSocialSupplier(type: SocialSupplier): SocialSupplier {
+  switch (type) {
+    case "tutads":
+      return getTutAds() as unknown as SocialSupplier
+    case "accsmtp":
+      return getAccSMTP() as unknown as SocialSupplier
+    default:
+      return getTutAds() as unknown as SocialSupplier
   }
 }

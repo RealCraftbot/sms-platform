@@ -1,4 +1,4 @@
-const SMSPOOL_BASE_URL = "https://smspool.net/api"
+const SMSPOOL_BASE_URL = "https://api.smspool.net"
 
 interface SMSPoolConfig {
   apiKey: string
@@ -15,10 +15,23 @@ interface CountryInfo {
   code?: string
 }
 
-interface ServicePrice {
-  service: string
-  country: string
-  price: number
+interface PoolInfo {
+  id: string
+  name: string
+}
+
+interface SMSResult {
+  success: boolean
+  orderId?: string
+  phoneNumber?: string
+  message?: string
+}
+
+interface SMSCheckResult {
+  success: boolean
+  sms?: string
+  code?: string
+  message?: string
 }
 
 export class SMSPool {
@@ -28,12 +41,14 @@ export class SMSPool {
     this.apiKey = config.apiKey
   }
 
-  private async request<T>(endpoint: string, data: Record<string, string> = {}): Promise<T> {
+  private async post<T>(endpoint: string, data: Record<string, string | number | undefined> = {}): Promise<T> {
     const formData = new URLSearchParams()
     formData.append("key", this.apiKey)
     
     for (const [key, value] of Object.entries(data)) {
-      formData.append(key, value)
+      if (value !== undefined) {
+        formData.append(key, String(value))
+      }
     }
 
     const response = await fetch(`${SMSPOOL_BASE_URL}${endpoint}`, {
@@ -45,7 +60,7 @@ export class SMSPool {
     })
 
     if (!response.ok) {
-      throw new Error(`SMSPool API error: ${response.status} ${response.statusText}`)
+      throw new Error(`SMSPool API error: ${response.status}`)
     }
 
     return response.json()
@@ -53,183 +68,206 @@ export class SMSPool {
 
   async getServices(): Promise<ServiceInfo[]> {
     try {
-      const result = await this.request<any[]>("/services/", {})
-      return result.map(s => ({
-        id: s.id || s.service || s,
-        name: s.name || s.service || s,
-      }))
+      const result = await this.post<any>("/service/retrieve_all", {})
+      const services = result.services || result || []
+      if (Array.isArray(services)) {
+        return services.map((s: any) => ({
+          id: String(s.id || s.service_id || s),
+          name: s.name || s.service_name || s,
+        }))
+      }
+      return []
     } catch (error) {
       console.error("SMSPool getServices error:", error)
-      return this.getFallbackServices()
+      return []
     }
   }
 
   async getCountries(): Promise<CountryInfo[]> {
     try {
-      const result = await this.request<any[]>("/countries/", {})
-      return result.map(c => ({
-        id: c.id || c.code || c.country || c,
-        name: c.name || c.country || c,
-        code: c.code || c.id,
-      }))
+      const result = await this.post<any>("/country/retrieve_all", {})
+      const countries = result.countries || result || []
+      if (Array.isArray(countries)) {
+        return countries.map((c: any) => ({
+          id: String(c.id || c.code || c),
+          name: c.name || c.country || c,
+          code: c.code || c.iso,
+        }))
+      }
+      return []
     } catch (error) {
       console.error("SMSPool getCountries error:", error)
-      return this.getFallbackCountries()
-    }
-  }
-
-  async getServicePrices(service: string): Promise<ServicePrice[]> {
-    try {
-      const result = await this.request<any[]>(`/prices/`, { service })
-      return result.map(p => ({
-        service,
-        country: p.country || p.country_code,
-        price: p.price || p.cost || 0,
-      }))
-    } catch (error) {
-      console.error("SMSPool getServicePrices error:", error)
       return []
     }
   }
 
-  private getFallbackServices(): ServiceInfo[] {
-    return [
-      { id: "whatsapp", name: "WhatsApp" },
-      { id: "instagram", name: "Instagram" },
-      { id: "telegram", name: "Telegram" },
-      { id: "facebook", name: "Facebook" },
-      { id: "google", name: "Google" },
-      { id: "twitter", name: "Twitter" },
-      { id: "tiktok", name: "TikTok" },
-      { id: "discord", name: "Discord" },
-      { id: "snapchat", name: "Snapchat" },
-      { id: "linkedin", name: "LinkedIn" },
-    ]
-  }
-
-  private getFallbackCountries(): CountryInfo[] {
-    return [
-      { id: "ng", name: "Nigeria", code: "+234" },
-      { id: "us", name: "United States", code: "+1" },
-      { id: "uk", name: "United Kingdom", code: "+44" },
-      { id: "ca", name: "Canada", code: "+1" },
-      { id: "gh", name: "Ghana", code: "+233" },
-      { id: "ke", name: "Kenya", code: "+254" },
-      { id: "za", name: "South Africa", code: "+27" },
-      { id: "in", name: "India", code: "+91" },
-      { id: "id", name: "Indonesia", code: "+62" },
-      { id: "ph", name: "Philippines", code: "+63" },
-      { id: "de", name: "Germany", code: "+49" },
-      { id: "fr", name: "France", code: "+33" },
-      { id: "es", name: "Spain", code: "+34" },
-      { id: "it", name: "Italy", code: "+39" },
-      { id: "br", name: "Brazil", code: "+55" },
-      { id: "mx", name: "Mexico", code: "+52" },
-      { id: "ru", name: "Russia", code: "+7" },
-      { id: "jp", name: "Japan", code: "+81" },
-      { id: "kr", name: "South Korea", code: "+82" },
-      { id: "au", name: "Australia", code: "+61" },
-    ]
-  }
-
-  async buyNumber(service: string, country: string): Promise<{
-    success: boolean
-    orderId?: string
-    phoneNumber?: string
-    message?: string
-  }> {
-    const data = {
-      service,
-      country,
-    }
-
-    const result = await this.request<BuyNumberResponse>("/buy/", data)
-
-    return {
-      success: result.success === 1,
-      orderId: result.order_id,
-      phoneNumber: result.phone_number,
-      message: result.message,
+  async getPools(): Promise<PoolInfo[]> {
+    try {
+      const result = await this.post<any>("/pool/retrieve_all", {})
+      return result.pools || result || []
+    } catch (error) {
+      console.error("SMSPool getPools error:", error)
+      return []
     }
   }
 
-  async getSms(orderId: string): Promise<{
-    success: boolean
-    sms?: string
-    code?: string
-    message?: string
-  }> {
-    const data = {
-      order_id: orderId,
-    }
-
-    const result = await this.request<GetSmsResponse>("/sms/", data)
-
-    return {
-      success: !!result.sms,
-      sms: result.sms,
-      code: result.code,
-      message: result.status,
+  async getBalance(): Promise<number> {
+    try {
+      const result = await this.post<{ balance?: string }>("/request/balance", {})
+      return parseFloat(result.balance || "0")
+    } catch (error) {
+      console.error("SMSPool getBalance error:", error)
+      return 0
     }
   }
 
-  async cancelOrder(orderId: string): Promise<{
-    success: boolean
-    message?: string
-  }> {
-    const data = {
-      order_id: orderId,
-    }
-
-    const result = await this.request<{ success: number; message?: string }>("/cancel/", data)
-
-    return {
-      success: result.success === 1,
-      message: result.message,
+  async getPricing(): Promise<any[]> {
+    try {
+      const result = await this.post<any>("/request/pricing", {})
+      return result.pricing || result || []
+    } catch (error) {
+      console.error("SMSPool getPricing error:", error)
+      return []
     }
   }
 
-  async getStatus(orderId: string): Promise<{
-    success: boolean
-    status?: string
-    phone_number?: string
-  }> {
-    const data = {
-      order_id: orderId,
+  async getPrice(country: string, service: string, pool?: string): Promise<{ price: number; success_rate: number }> {
+    try {
+      const data: Record<string, string | number | undefined> = { country, service }
+      if (pool) data.pool = pool
+      const result = await this.post<any>("/request/price", data)
+      return {
+        price: parseFloat(result.price || 0),
+        success_rate: parseFloat(result.success_rate || 0),
+      }
+    } catch (error) {
+      console.error("SMSPool getPrice error:", error)
+      return { price: 0, success_rate: 0 }
     }
+  }
 
-    const result = await this.request<{ success: number; status?: string; phone_number?: string }>("/status/", data)
+  async buyNumber(service: string, country: string, options?: {
+    pool?: string
+    max_price?: number
+    pricing_option?: number
+    quantity?: number
+  }): Promise<SMSResult> {
+    try {
+      const data: Record<string, string | number | undefined> = {
+        service,
+        country,
+      }
+      if (options?.pool) data.pool = options.pool
+      if (options?.max_price) data.max_price = options.max_price
+      if (options?.pricing_option) data.pricing_option = options.pricing_option
+      if (options?.quantity) data.quantity = options.quantity
 
-    return {
-      success: result.success === 1,
-      status: result.status,
-      phone_number: result.phone_number,
+      const result = await this.post<any>("/purchase/sms", data)
+
+      if (result.success === 1 || result.success === true || result.orderid || result.phonenumber) {
+        return {
+          success: true,
+          orderId: result.orderid || result.order_id,
+          phoneNumber: result.phonenumber || result.phone || result.number,
+          message: result.message,
+        }
+      }
+
+      return {
+        success: false,
+        message: result.message || result.error || "Failed to purchase number",
+      }
+    } catch (error: any) {
+      console.error("SMSPool buyNumber error:", error)
+      return {
+        success: false,
+        message: error.message || "Failed to purchase number",
+      }
+    }
+  }
+
+  async getSms(orderId: string): Promise<SMSCheckResult> {
+    try {
+      const result = await this.post<any>("/sms/check", { orderid: orderId })
+
+      if (result.success === 1 || result.code || result.sms) {
+        return {
+          success: true,
+          code: result.code || result.sms,
+          sms: result.sms || result.full_code,
+        }
+      }
+
+      return {
+        success: false,
+        message: result.message || "SMS not received yet",
+      }
+    } catch (error: any) {
+      console.error("SMSPool getSms error:", error)
+      return {
+        success: false,
+        message: error.message || "Failed to check SMS",
+      }
+    }
+  }
+
+  async cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const result = await this.post<{ success: number; message?: string }>("/sms/cancel", { orderid: orderId })
+      return {
+        success: result.success === 1,
+        message: result.message,
+      }
+    } catch (error: any) {
+      console.error("SMSPool cancelOrder error:", error)
+      return {
+        success: false,
+        message: error.message,
+      }
+    }
+  }
+
+  async getActiveOrders(): Promise<any[]> {
+    try {
+      const result = await this.post<any>("/request/active", {})
+      return result.orders || result || []
+    } catch (error) {
+      console.error("SMSPool getActiveOrders error:", error)
+      return []
+    }
+  }
+
+  async getOrderHistory(start: number = 0, length: number = 100): Promise<any[]> {
+    try {
+      const result = await this.post<any>("/request/history", { start, length })
+      return result.orders || result || []
+    } catch (error) {
+      console.error("SMSPool getOrderHistory error:", error)
+      return []
+    }
+  }
+
+  async resendSms(orderId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const result = await this.post<any>("/sms/resend", { orderid: orderId })
+      return {
+        success: result.success === 1,
+        message: result.message,
+      }
+    } catch (error: any) {
+      console.error("SMSPool resendSms error:", error)
+      return {
+        success: false,
+        message: error.message,
+      }
     }
   }
 }
-
-interface BuyNumberResponse {
-  success: number
-  order_id?: string
-  phone_number?: string
-  message?: string
-}
-
-interface GetSmsResponse {
-  sms?: string
-  code?: string
-  status?: string
-}
-
-let smspoolInstance: SMSPool | null = null
 
 export function getSMSPool(): SMSPool {
-  if (!smspoolInstance) {
-    const apiKey = process.env.SMSPOOL_API_KEY
-    if (!apiKey || apiKey === "your-smspool-api-key") {
-      throw new Error("SMSPool API key not configured. Please set SMSPOOL_API_KEY in .env")
-    }
-    smspoolInstance = new SMSPool({ apiKey })
+  const apiKey = process.env.SMSPOOL_API_KEY
+  if (!apiKey) {
+    throw new Error("SMSPOOL_API_KEY is not set")
   }
-  return smspoolInstance
+  return new SMSPool({ apiKey })
 }

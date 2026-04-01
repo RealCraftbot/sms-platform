@@ -15,6 +15,55 @@ interface CountryInfo {
   code?: string
 }
 
+interface SMSResult {
+  success: boolean
+  orderId?: string
+  phoneNumber?: string
+  message?: string
+}
+
+interface SMSCheckResult {
+  success: boolean
+  sms?: string
+  code?: string
+  message?: string
+}
+
+interface TutAdsCategory {
+  id: number
+  name: string
+  image?: string
+}
+
+interface TutAdsProduct {
+  id: number
+  name: string
+  category_id?: number
+  price: number
+  stock?: number
+  description?: string
+}
+
+interface TutAdsOrder {
+  id?: string
+  status?: string
+  trans_id?: string
+  data?: string[]
+}
+
+interface TutAdsProfile {
+  balance: number
+  email?: string
+  name?: string
+}
+
+interface BuyResult {
+  success: boolean
+  transId?: string
+  accounts?: string[]
+  message?: string
+}
+
 export class TutAds {
   private apiKey: string
 
@@ -22,12 +71,30 @@ export class TutAds {
     this.apiKey = config.apiKey
   }
 
-  private async request<T>(endpoint: string, data: Record<string, string> = {}): Promise<T> {
+  private async get<T>(endpoint: string, params: Record<string, string | number> = {}): Promise<T> {
+    const urlParams = new URLSearchParams()
+    urlParams.append("api_key", this.apiKey)
+    
+    for (const [key, value] of Object.entries(params)) {
+      urlParams.append(key, String(value))
+    }
+
+    const url = `${TUTADS_BASE_URL}${endpoint}?${urlParams.toString()}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`TutAds API error: ${response.status}`)
+    }
+
+    return response.json()
+  }
+
+  private async post<T>(endpoint: string, data: Record<string, string | number>): Promise<T> {
     const formData = new URLSearchParams()
-    formData.append("key", this.apiKey)
+    formData.append("api_key", this.apiKey)
     
     for (const [key, value] of Object.entries(data)) {
-      formData.append(key, value)
+      formData.append(key, String(value))
     }
 
     const response = await fetch(`${TUTADS_BASE_URL}${endpoint}`, {
@@ -45,135 +112,134 @@ export class TutAds {
     return response.json()
   }
 
+  async getProfile(): Promise<TutAdsProfile> {
+    try {
+      const result = await this.get<any>("/profile.php", {})
+      return {
+        balance: parseFloat(result.balance || 0),
+        email: result.email,
+        name: result.name,
+      }
+    } catch (error) {
+      console.error("TutAds getProfile error:", error)
+      return { balance: 0 }
+    }
+  }
+
+  async getBalance(): Promise<number> {
+    const profile = await this.getProfile()
+    return profile.balance
+  }
+
+  async getProducts(): Promise<{ categories: TutAdsCategory[]; products: TutAdsProduct[] }> {
+    try {
+      const result = await this.get<any>("/products.php", {})
+      return {
+        categories: result.categories || [],
+        products: result.products || [],
+      }
+    } catch (error) {
+      console.error("TutAds getProducts error:", error)
+      return { categories: [], products: [] }
+    }
+  }
+
+  async getProduct(productId: number): Promise<TutAdsProduct | null> {
+    try {
+      const result = await this.get<any>("/product.php", { product: productId })
+      return result.product || result || null
+    } catch (error) {
+      console.error("TutAds getProduct error:", error)
+      return null
+    }
+  }
+
+  async getOrder(orderId: string): Promise<TutAdsOrder | null> {
+    try {
+      const result = await this.get<any>("/order.php", { order: orderId })
+      return result.order || result || null
+    } catch (error) {
+      console.error("TutAds getOrder error:", error)
+      return null
+    }
+  }
+
+  async buyProduct(productId: number, amount: number = 1, coupon?: string): Promise<BuyResult> {
+    try {
+      const data: Record<string, string | number> = {
+        action: "buyProduct",
+        id: productId,
+        amount: amount,
+      }
+      if (coupon) {
+        data.coupon = coupon
+      }
+
+      const result = await this.get<any>("/buy_product", data)
+
+      if (result.status === "success") {
+        return {
+          success: true,
+          transId: result.trans_id,
+          accounts: result.data,
+          message: result.msg,
+        }
+      }
+
+      return {
+        success: false,
+        message: result.msg || result.message || "Failed to purchase product",
+      }
+    } catch (error: any) {
+      console.error("TutAds buyProduct error:", error)
+      return {
+        success: false,
+        message: error.message,
+      }
+    }
+  }
+
+  // SMS functions - TutAds uses SMS-activate compatible endpoints
   async getServices(): Promise<ServiceInfo[]> {
     try {
-      const result = await this.request<any[]>("/services", {})
-      return result.map(s => ({
-        id: s.id || s.service || s,
-        name: s.name || s.service || s,
-      }))
+      // TutAds may have SMS services via different endpoint
+      return []
     } catch (error) {
       console.error("TutAds getServices error:", error)
-      return this.getFallbackServices()
+      return []
     }
   }
 
   async getCountries(): Promise<CountryInfo[]> {
-    try {
-      const result = await this.request<any[]>("/countries", {})
-      return result.map(c => ({
-        id: c.id || c.code || c.country || c,
-        name: c.name || c.country || c,
-        code: c.code || c.id,
-      }))
-    } catch (error) {
-      console.error("TutAds getCountries error:", error)
-      return this.getFallbackCountries()
-    }
+    return []
   }
 
-  private getFallbackServices(): ServiceInfo[] {
-    return [
-      { id: "whatsapp", name: "WhatsApp" },
-      { id: "instagram", name: "Instagram" },
-      { id: "telegram", name: "Telegram" },
-      { id: "facebook", name: "Facebook" },
-      { id: "twitter", name: "Twitter" },
-      { id: "tiktok", name: "TikTok" },
-    ]
-  }
-
-  private getFallbackCountries(): CountryInfo[] {
-    return [
-      { id: "ng", name: "Nigeria", code: "+234" },
-      { id: "us", name: "United States", code: "+1" },
-      { id: "uk", name: "United Kingdom", code: "+44" },
-      { id: "ca", name: "Canada", code: "+1" },
-      { id: "gh", name: "Ghana", code: "+233" },
-    ]
-  }
-
-  async buyNumber(service: string, country: string): Promise<{
-    success: boolean
-    orderId?: string
-    phoneNumber?: string
-    message?: string
-  }> {
-    const data = {
-      service,
-      country,
-    }
-
-    const result = await this.request<BuyResponse>("/buy", data)
-
+  async buyNumber(service: string, country: string): Promise<SMSResult> {
     return {
-      success: result.status === "success" || result.status === "1",
-      orderId: result.order_id,
-      phoneNumber: result.phone,
-      message: result.message,
+      success: false,
+      message: "TutAds is primarily for social accounts. Use buyProduct method instead.",
     }
   }
 
-  async getSms(orderId: string): Promise<{
-    success: boolean
-    sms?: string
-    code?: string
-    message?: string
-  }> {
-    const data = {
-      order_id: orderId,
-    }
-
-    const result = await this.request<GetSmsResponse>("/sms", data)
-
+  async getSms(orderId: string): Promise<SMSCheckResult> {
     return {
-      success: result.status === "success",
-      sms: result.sms,
-      code: result.code,
-      message: result.message,
+      success: false,
+      message: "TutAds does not support SMS verification.",
     }
   }
 
-  async cancelOrder(orderId: string): Promise<{
-    success: boolean
-    message?: string
-  }> {
-    const data = {
-      order_id: orderId,
-    }
-
-    const result = await this.request<{ status: string; message?: string }>("/cancel", data)
-
+  async cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
     return {
-      success: result.status === "success",
-      message: result.message,
+      success: false,
+      message: "TutAds does not support order cancellation via API.",
     }
   }
 }
-
-interface BuyResponse {
-  status: string
-  order_id?: string
-  phone?: string
-  message?: string
-}
-
-interface GetSmsResponse {
-  status: string
-  sms?: string
-  code?: string
-  message?: string
-}
-
-let tutadsInstance: TutAds | null = null
 
 export function getTutAds(): TutAds {
-  if (!tutadsInstance) {
-    const apiKey = process.env.TUTADS_API_KEY
-    if (!apiKey || apiKey === "your-tutads-api-key") {
-      throw new Error("TutAds API key not configured")
-    }
-    tutadsInstance = new TutAds({ apiKey })
+  const apiKey = process.env.TUTADS_API_KEY
+  if (!apiKey) {
+    throw new Error("TUTADS_API_KEY is not set")
   }
-  return tutadsInstance
+  return new TutAds({ apiKey })
 }
