@@ -1,5 +1,2 @@
 [phases.setup]
-nodeVersion = "22"
-
-[phases.install]
-npmVersion = "latest"
+nixPkgs = ["nodejs_20", "npm-10_x", "openssl"]
