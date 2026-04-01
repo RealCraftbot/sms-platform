@@ -1,11 +1,25 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import { signOut } from "next-auth/react"
+import { Shield, LayoutDashboard, MessageSquare, FileText, Wallet, CreditCard, Settings, LogOut, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, MessageSquare, FileText, LogOut } from "lucide-react"
+
+const userNavItems = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/sms/order", label: "Order SMS", icon: MessageSquare },
+  { href: "/dashboard/logs", label: "Social Logs", icon: FileText },
+  { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
+  { href: "/dashboard/orders", label: "Orders", icon: FileText },
+]
+
+const adminNavItems = [
+  { href: "/admin/pricing", label: "Pricing", icon: Settings },
+  { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/logs", label: "Upload Logs", icon: FileText },
+]
 
 export default function DashboardLayout({
   children,
@@ -14,9 +28,14 @@ export default function DashboardLayout({
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
 
   if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return (
+      <div className="min-h-screen bg-navy flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    )
   }
 
   if (!session) {
@@ -24,79 +43,112 @@ export default function DashboardLayout({
     return null
   }
 
-  const isAdmin = (session.user as any)?.email === "admin@smsreseller.com"
+  const isAdmin = session.user?.email === "admin@smsreseller.com"
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-64 border-r bg-card p-4">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">{session.user?.email}</p>
+    <div className="min-h-screen bg-navy flex flex-col md:flex-row">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:block w-64 bg-navy/80 border-r border-light-lavender/20 p-4 shrink-0">
+        <div className="mb-6 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="h-8 w-8 text-primary-blue" />
+            <span className="text-lg font-bold text-white">SMSReseller</span>
+          </div>
+          <p className="text-light-lavender text-xs">Welcome, {session.user?.name || 'User'}</p>
+          <p className="text-light-lavender/50 text-xs truncate">{session.user?.email}</p>
         </div>
-        <nav className="space-y-2">
-          <Link href="/dashboard">
-            <Button variant="ghost" className="w-full justify-start">
-              <Wallet className="mr-2 h-4 w-4" />
-              Overview
-            </Button>
-          </Link>
-          <Link href="/dashboard/sms/order">
-            <Button variant="ghost" className="w-full justify-start">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Order SMS
-            </Button>
-          </Link>
-          <Link href="/dashboard/logs">
-            <Button variant="ghost" className="w-full justify-start">
-              <FileText className="mr-2 h-4 w-4" />
-              Social Logs
-            </Button>
-          </Link>
-          <Link href="/dashboard/wallet">
-            <Button variant="ghost" className="w-full justify-start">
-              <Wallet className="mr-2 h-4 w-4" />
-              Wallet
-            </Button>
-          </Link>
-          <Link href="/dashboard/orders">
-            <Button variant="ghost" className="w-full justify-start">
-              <FileText className="mr-2 h-4 w-4" />
-              Orders
-            </Button>
-          </Link>
+
+        <nav className="space-y-1">
+          <p className="text-light-lavender/50 text-xs px-3 mb-2">Menu</p>
+          {userNavItems.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button
+                variant="ghost"
+                className={`w-full justify-start text-sm ${
+                  pathname === item.href 
+                    ? 'bg-mint-green/10 text-mint-green' 
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                <item.icon className="mr-3 h-4 w-4" />
+                {item.label}
+              </Button>
+            </Link>
+          ))}
+
           {isAdmin && (
-            <div className="pt-4 mt-4 border-t">
-              <p className="text-sm font-semibold mb-2 px-2">Admin</p>
-              <Link href="/admin/pricing">
-                <Button variant="ghost" className="w-full justify-start">
-                  Pricing
-                </Button>
-              </Link>
-              <Link href="/admin/payments">
-                <Button variant="ghost" className="w-full justify-start">
-                  Payments
-                </Button>
-              </Link>
-              <Link href="/admin/logs">
-                <Button variant="ghost" className="w-full justify-start">
-                  Upload Logs
-                </Button>
-              </Link>
-            </div>
+            <>
+              <p className="text-mint-green text-xs px-3 mb-2 mt-4">Admin</p>
+              {adminNavItems.map((item) => (
+                <Link key={item.href} href={item.href}>
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start text-sm ${
+                      pathname === item.href 
+                        ? 'bg-mint-green/10 text-mint-green' 
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <item.icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              ))}
+            </>
           )}
         </nav>
-        <div className="mt-auto pt-4">
+
+        <div className="mt-auto pt-4 border-t border-light-lavender/20">
           <Button
             variant="ghost"
-            className="w-full justify-start"
-            onClick={() => router.push("/api/auth/signout")}
+            className="w-full justify-start text-red-400 hover:bg-red-400/10 text-sm"
+            onClick={() => signOut({ callbackUrl: "/" })}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            <LogOut className="mr-3 h-4 w-4" />
+            Sign Out
           </Button>
         </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+
+      {/* Mobile Header */}
+      <div className="md:hidden bg-navy/80 border-b border-light-lavender/20 p-4 sticky top-[60px] z-40">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white font-medium text-sm">{session.user?.name || 'User'}</p>
+            <p className="text-light-lavender text-xs">{session.user?.email}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400"
+            onClick={() => signOut({ callbackUrl: "/" })}
+          >
+            <LogOut size={18} />
+          </Button>
+        </div>
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+          {userNavItems.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button
+                variant={pathname === item.href ? "default" : "outline"}
+                size="sm"
+                className={`text-xs whitespace-nowrap ${
+                  pathname === item.href 
+                    ? 'bg-mint-green text-navy' 
+                    : 'text-white border-light-lavender/30'
+                }`}
+              >
+                {item.label}
+              </Button>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1">
+        {children}
+      </main>
     </div>
   )
 }
