@@ -62,7 +62,7 @@ export class AcctShop {
     const result = await this.request<BuyResponse>("/buy", data)
 
     return {
-      success: result.success === true || result.success === 1,
+      success: result.success === true || Number(result.success) === 1,
       orderId: result.order_id,
       phoneNumber: result.phone,
       message: result.message,
@@ -82,7 +82,7 @@ export class AcctShop {
     const result = await this.request<GetSmsResponse>("/sms", data)
 
     return {
-      success: result.success === true || result.success === 1,
+      success: result.success === true || Number(result.success) === 1,
       sms: result.sms,
       code: result.code,
       message: result.message,
@@ -97,10 +97,10 @@ export class AcctShop {
       order_id: orderId,
     }
 
-    const result = await this.request<{ success: boolean; message?: string }>("/cancel", data)
+    const result = await this.request<{ success: boolean | number; message?: string }>("/cancel", data)
 
     return {
-      success: result.success === true || result.success === 1,
+      success: result.success === true || Number(result.success) === 1,
       message: result.message,
     }
   }
