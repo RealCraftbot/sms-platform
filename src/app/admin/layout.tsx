@@ -1,7 +1,7 @@
 "use client"
 
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Shield, DollarSign, FileText, CreditCard, Settings, Phone, LayoutDashboard, Server } from "lucide-react"
@@ -11,24 +11,49 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [adminEmail, setAdminEmail] = useState("")
 
-  if (status === "loading") {
+  useEffect(() => {
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmail) {
+      router.push("/admin-login")
+      return
+    }
+    
+    setAdminEmail(adminEmail)
+    setIsAdmin(true)
+    setLoading(false)
+  }, [router])
+
+  if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
-  if (!session) {
-    router.push("/login")
-    return null
-  }
-
-  const isAdmin = session.user?.email === "admin@smsreseller.com"
-
   if (!isAdmin) {
-    router.push("/dashboard")
     return null
   }
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminId")
+    localStorage.removeItem("adminEmail")
+    localStorage.removeItem("adminRole")
+    router.push("/admin-login")
+  }
+
+  const navItems = [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/services", label: "Services & Products", icon: Server },
+    { href: "/admin/pricing", label: "Pricing", icon: DollarSign },
+    { href: "/admin/payments", label: "Payments", icon: CreditCard },
+    { href: "/admin/logs", label: "Upload Logs", icon: FileText },
+    { href: "/admin/settings", label: "SMS Suppliers", icon: Phone },
+  ]
 
   return (
     <div className="min-h-screen flex">
@@ -39,46 +64,32 @@ export default function AdminLayout({
             <span className="text-lg font-bold text-white">SMSReseller</span>
           </div>
           <p className="text-light-lavender text-xs">Admin Panel</p>
+          <p className="text-light-lavender/50 text-xs mt-1">{adminEmail}</p>
         </div>
         <nav className="space-y-1">
-          <Link href="/admin/pricing">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <DollarSign className="mr-3 h-4 w-4" />
-              Pricing
-            </Button>
-          </Link>
-          <Link href="/admin/payments">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <CreditCard className="mr-3 h-4 w-4" />
-              Payments
-            </Button>
-          </Link>
-          <Link href="/admin/logs">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <FileText className="mr-3 h-4 w-4" />
-              Upload Logs
-            </Button>
-          </Link>
-          <Link href="/admin/settings">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <Phone className="mr-3 h-4 w-4" />
-              SMS Suppliers
-            </Button>
-          </Link>
-          <Link href="/admin/services">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <Server className="mr-3 h-4 w-4" />
-              Services & Products
-            </Button>
-          </Link>
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button 
+                variant="ghost" 
+                className={`w-full justify-start text-white hover:bg-white/10 ${
+                  pathname === item.href ? "bg-white/10" : ""
+                }`}
+              >
+                <item.icon className="mr-3 h-4 w-4" />
+                {item.label}
+              </Button>
+            </Link>
+          ))}
         </nav>
         <div className="mt-6 pt-4 border-t border-light-lavender/20">
-          <Link href="/dashboard">
-            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
-              <LayoutDashboard className="mr-3 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-white hover:bg-white/10"
+            onClick={handleLogout}
+          >
+            <LayoutDashboard className="mr-3 h-4 w-4" />
+            Logout
+          </Button>
         </div>
       </aside>
       <main className="flex-1 p-6 bg-navy">{children}</main>

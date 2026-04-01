@@ -11,11 +11,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const adminUser = await prisma.user.findUnique({
+    const admin = await prisma.admin.findUnique({
       where: { email: session.user.email! },
     })
 
-    if (!adminUser || adminUser.email !== "admin@smsreseller.com") {
+    if (!admin) {
       return NextResponse.json({ error: "Admin only" }, { status: 403 })
     }
 

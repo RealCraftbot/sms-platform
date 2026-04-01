@@ -27,7 +27,8 @@ model Admin {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
-  name      String
+  name      String?
+  role      String   @default("admin")
   createdAt DateTime @default(now())
   
   reviewedPayments ManualPayment[]

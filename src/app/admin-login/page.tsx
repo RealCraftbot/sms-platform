@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -23,23 +22,30 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError("")
 
-    if (email !== "admin@smsreseller.com") {
-      setError("Only admin@smsreseller.com can access this page")
-      setLoading(false)
-      return
-    }
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
 
-    const result = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    })
+      const data = await res.json()
 
-    if (result?.error) {
-      setError("Invalid admin credentials")
+      if (!res.ok) {
+        setError(data.error || "Invalid credentials")
+        setLoading(false)
+        return
+      }
+
+      // Store admin session
+      localStorage.setItem("adminId", data.id)
+      localStorage.setItem("adminEmail", data.email)
+      localStorage.setItem("adminRole", data.role || "admin")
+      
+      router.push("/admin")
+    } catch (err) {
+      setError("Something went wrong")
       setLoading(false)
-    } else {
-      router.push("/admin/pricing")
     }
   }
 
@@ -64,7 +70,7 @@ export default function AdminLoginPage() {
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="p-3 text-sm text-red-400 bg-red-500/20 border border-red-500/30 rounded-lg animate-pulse">
+                <div className="p-3 text-sm text-red-400 bg-red-500/20 border border-red-500/30 rounded-lg">
                   {error}
                 </div>
               )}
@@ -74,7 +80,7 @@ export default function AdminLoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@smsreseller.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -134,4 +140,4 @@ export default function AdminLoginPage() {
       </div>
     </div>
   )
-}// v1775076835
+}

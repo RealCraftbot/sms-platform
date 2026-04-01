@@ -11,8 +11,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const isAdmin = session.user.email === "admin@smsreseller.com"
-    if (!isAdmin) {
+    const admin = await prisma.admin.findUnique({
+      where: { email: session.user.email! },
+    })
+
+    if (!admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -37,13 +40,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const isAdmin = session.user.email === "admin@smsreseller.com"
-    if (!isAdmin) {
+    const admin = await prisma.admin.findUnique({
+      where: { email: session.user.email! },
+    })
+
+    if (!admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const body = await request.json()
     const { smsSupplier, socialSupplier } = body
+
+    const validSMSSuppliers = ["smspool", "smspinverify", "smsactivate", "acctshop", "tutads"]
+    const validSocialSuppliers = ["tutads", "accsmtp"]
+
+    if (smsSupplier && !validSMSSuppliers.includes(smsSupplier)) {
+      return NextResponse.json({ error: "Invalid SMS supplier" }, { status: 400 })
+    }
+
+    if (socialSupplier && !validSocialSuppliers.includes(socialSupplier)) {
+      return NextResponse.json({ error: "Invalid social supplier" }, { status: 400 })
+    }
 
     if (smsSupplier) {
       await prisma.setting.upsert({
