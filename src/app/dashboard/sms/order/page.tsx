@@ -3,20 +3,24 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Loader2 } from "lucide-react"
+
+interface Country {
+  id: string
+  name: string
+  code?: string
+  price: number | null
+  basePrice: number | null
+}
 
 interface Service {
   id: string
   name: string
-  countries: {
-    id: string
-    name: string
-    price: number | null
-  }[]
+  countries: Country[]
 }
 
 export default function SMSOrderPage() {
@@ -28,16 +32,26 @@ export default function SMSOrderPage() {
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [ordering, setOrdering] = useState(false)
+  const [supplier, setSupplier] = useState<string>("")
+  const [error, setError] = useState<string>("")
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/services").then(res => res.json()),
+      fetch("/api/supplier/services").then(res => res.json()),
       fetch("/api/wallet/balance").then(res => res.json()),
     ]).then(([servicesData, balanceData]) => {
-      setServices(servicesData.services)
+      if (servicesData.services) {
+        setServices(servicesData.services)
+        setSupplier(servicesData.supplier || "smspool")
+        if (servicesData.message) {
+          console.log(servicesData.message)
+        }
+      }
       setBalance(parseFloat(balanceData.balance) || 0)
       setLoading(false)
-    }).catch(() => {
+    }).catch(err => {
+      console.error("Error loading data:", err)
+      setError("Failed to load services")
       setLoading(false)
     })
   }, [])
@@ -49,7 +63,13 @@ export default function SMSOrderPage() {
 
   const handleOrder = async () => {
     if (!selectedService || !selectedCountry) return
+    if (!selectedCountryData?.price) {
+      setError("This service/country is not configured yet. Please contact admin.")
+      return
+    }
+    
     setOrdering(true)
+    setError("")
 
     try {
       const res = await fetch("/api/sms/order", {
@@ -65,7 +85,7 @@ export default function SMSOrderPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        alert(data.error || "Order failed")
+        setError(data.error || "Order failed")
         setOrdering(false)
         return
       }
@@ -77,47 +97,66 @@ export default function SMSOrderPage() {
       alert("Order placed successfully!")
       router.push("/dashboard/orders")
     } catch (err) {
-      alert("Something went wrong")
+      setError("Something went wrong")
       setOrdering(false)
     }
   }
 
   if (loading) {
-    return <div>Loading services...</div>
+    return (
+      <div className="min-h-screen bg-navy p-4 md:p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-mint-green" />
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Order SMS Verification</h1>
-        <p className="text-muted-foreground">Get a temporary phone number for OTP verification</p>
+        <h1 className="text-3xl font-bold text-white">Order SMS Verification</h1>
+        <p className="text-light-lavender">Get a temporary phone number for OTP verification</p>
+        {supplier && (
+          <Badge variant="outline" className="mt-2 text-mint-green border-mint-green">
+            Supplier: {supplier.toUpperCase()}
+          </Badge>
+        )}
       </div>
 
-      <Card>
+      <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Your Wallet Balance</CardTitle>
+          <CardTitle className="text-white">Your Wallet Balance</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold">₦{balance.toLocaleString()}</span>
-            <Button variant="outline" onClick={() => router.push("/dashboard/wallet")}>
+            <span className="text-2xl font-bold text-white">₦{balance.toLocaleString()}</span>
+            <Button variant="outline" onClick={() => router.push("/dashboard/wallet")} className="text-white border-light-lavender">
               Add Funds
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      {error && (
+        <Card className="bg-red-500/10 border-red-500/20">
+          <CardContent className="p-4">
+            <p className="text-red-400">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Select Service & Country</CardTitle>
-          <CardDescription>Choose the service you need verification for</CardDescription>
+          <CardTitle className="text-white">Select Service & Country</CardTitle>
+          <CardDescription className="text-light-lavender">
+            Choose the service you need verification for
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Service</Label>
+              <Label className="text-white">Service</Label>
               <Select value={selectedService} onValueChange={setSelectedService}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/10 border-light-lavender/30 text-white">
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
                 <SelectContent>
@@ -130,19 +169,19 @@ export default function SMSOrderPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Country</Label>
+              <Label className="text-white">Country</Label>
               <Select 
                 value={selectedCountry} 
                 onValueChange={setSelectedCountry}
                 disabled={!selectedService}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/10 border-light-lavender/30 text-white">
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
                   {selectedServiceData?.countries.map(country => (
                     <SelectItem key={country.id} value={country.id}>
-                      {country.name} {country.price ? `₦${country.price}` : ""}
+                      {country.name} {country.price ? `₦${country.price}` : "(not configured)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -150,28 +189,28 @@ export default function SMSOrderPage() {
             </div>
           </div>
 
-          {selectedCountryData?.price && (
-            <div className="p-4 bg-muted rounded-lg space-y-2">
+          {selectedCountryData && (
+            <div className="p-4 bg-white/5 rounded-lg space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Price: ₦{selectedCountryData.price}</span>
+                <span className="font-semibold text-white">Price: ₦{selectedCountryData.price || "Not configured"}</span>
                 {paymentMethod === "wallet" && (
-                  hasSufficientFunds ? (
-                    <Badge variant="success">Sufficient funds</Badge>
+                  selectedCountryData.price && hasSufficientFunds ? (
+                    <Badge className="bg-mint-green/20 text-mint-green">Sufficient funds</Badge>
                   ) : (
-                    <Badge variant="destructive">Insufficient funds</Badge>
+                    <Badge className="bg-red-500/20 text-red-400">Insufficient funds</Badge>
                   )
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-light-lavender">
                 Payment will be deducted from your wallet balance
               </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Payment Method</Label>
+            <Label className="text-white">Payment Method</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-white/10 border-light-lavender/30 text-white">
                 <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
               <SelectContent>
@@ -185,9 +224,18 @@ export default function SMSOrderPage() {
           <Button 
             onClick={handleOrder} 
             disabled={!selectedService || !selectedCountry || !selectedCountryData?.price || ordering || (paymentMethod === "wallet" && !hasSufficientFunds)}
-            className="w-full"
+            className="w-full bg-mint-green text-navy hover:bg-mint-green/80"
           >
-            {ordering ? "Processing..." : paymentMethod === "wallet" && !hasSufficientFunds ? "Insufficient Funds" : "Place Order"}
+            {ordering ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="animate-spin" size={20} />
+                Processing...
+              </span>
+            ) : paymentMethod === "wallet" && !hasSufficientFunds ? (
+              "Insufficient Funds"
+            ) : (
+              "Place Order"
+            )}
           </Button>
         </CardContent>
       </Card>

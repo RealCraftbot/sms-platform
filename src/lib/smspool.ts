@@ -1,22 +1,24 @@
-import crypto from "crypto"
-
 const SMSPOOL_BASE_URL = "https://smspool.net/api"
 
 interface SMSPoolConfig {
   apiKey: string
 }
 
-interface BuyNumberResponse {
-  success: number
-  order_id?: string
-  phone_number?: string
-  message?: string
+interface ServiceInfo {
+  id: string
+  name: string
 }
 
-interface GetSmsResponse {
-  sms?: string
+interface CountryInfo {
+  id: string
+  name: string
   code?: string
-  status?: string
+}
+
+interface ServicePrice {
+  service: string
+  country: string
+  price: number
 }
 
 export class SMSPool {
@@ -26,7 +28,7 @@ export class SMSPool {
     this.apiKey = config.apiKey
   }
 
-  private async request<T>(endpoint: string, data: Record<string, string>): Promise<T> {
+  private async request<T>(endpoint: string, data: Record<string, string> = {}): Promise<T> {
     const formData = new URLSearchParams()
     formData.append("key", this.apiKey)
     
@@ -47,6 +49,87 @@ export class SMSPool {
     }
 
     return response.json()
+  }
+
+  async getServices(): Promise<ServiceInfo[]> {
+    try {
+      const result = await this.request<any[]>("/services/", {})
+      return result.map(s => ({
+        id: s.id || s.service || s,
+        name: s.name || s.service || s,
+      }))
+    } catch (error) {
+      console.error("SMSPool getServices error:", error)
+      return this.getFallbackServices()
+    }
+  }
+
+  async getCountries(): Promise<CountryInfo[]> {
+    try {
+      const result = await this.request<any[]>("/countries/", {})
+      return result.map(c => ({
+        id: c.id || c.code || c.country || c,
+        name: c.name || c.country || c,
+        code: c.code || c.id,
+      }))
+    } catch (error) {
+      console.error("SMSPool getCountries error:", error)
+      return this.getFallbackCountries()
+    }
+  }
+
+  async getServicePrices(service: string): Promise<ServicePrice[]> {
+    try {
+      const result = await this.request<any[]>(`/prices/`, { service })
+      return result.map(p => ({
+        service,
+        country: p.country || p.country_code,
+        price: p.price || p.cost || 0,
+      }))
+    } catch (error) {
+      console.error("SMSPool getServicePrices error:", error)
+      return []
+    }
+  }
+
+  private getFallbackServices(): ServiceInfo[] {
+    return [
+      { id: "whatsapp", name: "WhatsApp" },
+      { id: "instagram", name: "Instagram" },
+      { id: "telegram", name: "Telegram" },
+      { id: "facebook", name: "Facebook" },
+      { id: "google", name: "Google" },
+      { id: "twitter", name: "Twitter" },
+      { id: "tiktok", name: "TikTok" },
+      { id: "discord", name: "Discord" },
+      { id: "snapchat", name: "Snapchat" },
+      { id: "linkedin", name: "LinkedIn" },
+    ]
+  }
+
+  private getFallbackCountries(): CountryInfo[] {
+    return [
+      { id: "ng", name: "Nigeria", code: "+234" },
+      { id: "us", name: "United States", code: "+1" },
+      { id: "uk", name: "United Kingdom", code: "+44" },
+      { id: "ca", name: "Canada", code: "+1" },
+      { id: "gh", name: "Ghana", code: "+233" },
+      { id: "ke", name: "Kenya", code: "+254" },
+      { id: "za", name: "South Africa", code: "+27" },
+      { id: "in", name: "India", code: "+91" },
+      { id: "id", name: "Indonesia", code: "+62" },
+      { id: "ph", name: "Philippines", code: "+63" },
+      { id: "de", name: "Germany", code: "+49" },
+      { id: "fr", name: "France", code: "+33" },
+      { id: "es", name: "Spain", code: "+34" },
+      { id: "it", name: "Italy", code: "+39" },
+      { id: "br", name: "Brazil", code: "+55" },
+      { id: "mx", name: "Mexico", code: "+52" },
+      { id: "ru", name: "Russia", code: "+7" },
+      { id: "jp", name: "Japan", code: "+81" },
+      { id: "kr", name: "South Korea", code: "+82" },
+      { id: "au", name: "Australia", code: "+61" },
+    ]
   }
 
   async buyNumber(service: string, country: string): Promise<{
@@ -123,6 +206,19 @@ export class SMSPool {
       phone_number: result.phone_number,
     }
   }
+}
+
+interface BuyNumberResponse {
+  success: number
+  order_id?: string
+  phone_number?: string
+  message?: string
+}
+
+interface GetSmsResponse {
+  sms?: string
+  code?: string
+  status?: string
 }
 
 let smspoolInstance: SMSPool | null = null

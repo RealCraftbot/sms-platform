@@ -20,7 +20,20 @@ export interface SMSCheckResult {
   message?: string
 }
 
+export interface ServiceInfo {
+  id: string
+  name: string
+}
+
+export interface CountryInfo {
+  id: string
+  name: string
+  code?: string
+}
+
 export interface SMSSupplier {
+  getServices(): Promise<ServiceInfo[]>
+  getCountries(): Promise<CountryInfo[]>
   buyNumber(service: string, country: string): Promise<SMSResult>
   getSms(orderId: string): Promise<SMSCheckResult>
   cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }>
@@ -39,6 +52,6 @@ export function getSupplier(type: Supplier): SMSSupplier {
     case "tutads":
       return getTutAds()
     default:
-      throw new Error(`Unknown SMS supplier: ${type}`)
+      return getSMSPool()
   }
 }

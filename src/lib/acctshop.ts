@@ -4,18 +4,15 @@ interface AcctShopConfig {
   apiKey: string
 }
 
-interface BuyResponse {
-  success: boolean | number
-  order_id?: string
-  phone?: string
-  message?: string
+interface ServiceInfo {
+  id: string
+  name: string
 }
 
-interface GetSmsResponse {
-  success: boolean | number
-  sms?: string
+interface CountryInfo {
+  id: string
+  name: string
   code?: string
-  message?: string
 }
 
 export class AcctShop {
@@ -25,7 +22,7 @@ export class AcctShop {
     this.apiKey = config.apiKey
   }
 
-  private async request<T>(endpoint: string, data: Record<string, string>): Promise<T> {
+  private async request<T>(endpoint: string, data: Record<string, string> = {}): Promise<T> {
     const formData = new URLSearchParams()
     formData.append("key", this.apiKey)
     
@@ -46,6 +43,54 @@ export class AcctShop {
     }
 
     return response.json()
+  }
+
+  async getServices(): Promise<ServiceInfo[]> {
+    try {
+      const result = await this.request<any[]>("/services", {})
+      return result.map(s => ({
+        id: s.id || s.service || s,
+        name: s.name || s.service || s,
+      }))
+    } catch (error) {
+      console.error("AcctShop getServices error:", error)
+      return this.getFallbackServices()
+    }
+  }
+
+  async getCountries(): Promise<CountryInfo[]> {
+    try {
+      const result = await this.request<any[]>("/countries", {})
+      return result.map(c => ({
+        id: c.id || c.code || c.country || c,
+        name: c.name || c.country || c,
+        code: c.code || c.id,
+      }))
+    } catch (error) {
+      console.error("AcctShop getCountries error:", error)
+      return this.getFallbackCountries()
+    }
+  }
+
+  private getFallbackServices(): ServiceInfo[] {
+    return [
+      { id: "instagram", name: "Instagram" },
+      { id: "facebook", name: "Facebook" },
+      { id: "twitter", name: "Twitter" },
+      { id: "tiktok", name: "TikTok" },
+      { id: "snapchat", name: "Snapchat" },
+      { id: "linkedin", name: "LinkedIn" },
+    ]
+  }
+
+  private getFallbackCountries(): CountryInfo[] {
+    return [
+      { id: "ng", name: "Nigeria", code: "+234" },
+      { id: "us", name: "United States", code: "+1" },
+      { id: "uk", name: "United Kingdom", code: "+44" },
+      { id: "ca", name: "Canada", code: "+1" },
+      { id: "gh", name: "Ghana", code: "+233" },
+    ]
   }
 
   async buyNumber(service: string, country: string): Promise<{
@@ -104,6 +149,20 @@ export class AcctShop {
       message: result.message,
     }
   }
+}
+
+interface BuyResponse {
+  success: boolean | number
+  order_id?: string
+  phone?: string
+  message?: string
+}
+
+interface GetSmsResponse {
+  success: boolean | number
+  sms?: string
+  code?: string
+  message?: string
 }
 
 let acctshopInstance: AcctShop | null = null

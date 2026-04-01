@@ -4,16 +4,14 @@ interface SMSPinVerifyConfig {
   apiKey: string
 }
 
-interface BuyNumberResponse {
-  status: string
-  phone?: string
-  order_id?: string
-  message?: string
+interface ServiceInfo {
+  id: string
+  name: string
 }
 
-interface GetSmsResponse {
-  status: string
-  sms?: string
+interface CountryInfo {
+  id: string
+  name: string
   code?: string
 }
 
@@ -45,6 +43,63 @@ export class SMSPinVerify {
     }
 
     return response.json()
+  }
+
+  async getServices(): Promise<ServiceInfo[]> {
+    try {
+      const result = await this.request<any[]>("/services", {})
+      return result.map(s => ({
+        id: s.id || s.service || s,
+        name: s.name || s.service || s,
+      }))
+    } catch (error) {
+      console.error("SMSPinVerify getServices error:", error)
+      return this.getFallbackServices()
+    }
+  }
+
+  async getCountries(): Promise<CountryInfo[]> {
+    try {
+      const result = await this.request<any[]>("/countries", {})
+      return result.map(c => ({
+        id: c.id || c.code || c.country || c,
+        name: c.name || c.country || c,
+        code: c.code || c.id,
+      }))
+    } catch (error) {
+      console.error("SMSPinVerify getCountries error:", error)
+      return this.getFallbackCountries()
+    }
+  }
+
+  private getFallbackServices(): ServiceInfo[] {
+    return [
+      { id: "whatsapp", name: "WhatsApp" },
+      { id: "instagram", name: "Instagram" },
+      { id: "telegram", name: "Telegram" },
+      { id: "facebook", name: "Facebook" },
+      { id: "google", name: "Google" },
+      { id: "twitter", name: "Twitter" },
+      { id: "tiktok", name: "TikTok" },
+      { id: "discord", name: "Discord" },
+      { id: "snapchat", name: "Snapchat" },
+      { id: "linkedin", name: "LinkedIn" },
+    ]
+  }
+
+  private getFallbackCountries(): CountryInfo[] {
+    return [
+      { id: "ng", name: "Nigeria", code: "+234" },
+      { id: "us", name: "United States", code: "+1" },
+      { id: "uk", name: "United Kingdom", code: "+44" },
+      { id: "ca", name: "Canada", code: "+1" },
+      { id: "gh", name: "Ghana", code: "+233" },
+      { id: "ke", name: "Kenya", code: "+254" },
+      { id: "za", name: "South Africa", code: "+27" },
+      { id: "in", name: "India", code: "+91" },
+      { id: "id", name: "Indonesia", code: "+62" },
+      { id: "ph", name: "Philippines", code: "+63" },
+    ]
   }
 
   async buyNumber(service: string, country: string): Promise<{
@@ -102,6 +157,19 @@ export class SMSPinVerify {
       message: result.message,
     }
   }
+}
+
+interface BuyNumberResponse {
+  status: string
+  phone?: string
+  order_id?: string
+  message?: string
+}
+
+interface GetSmsResponse {
+  status: string
+  sms?: string
+  code?: string
 }
 
 let smspinverifyInstance: SMSPinVerify | null = null

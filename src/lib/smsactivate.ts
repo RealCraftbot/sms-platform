@@ -4,18 +4,15 @@ interface SMSActivateConfig {
   apiKey: string
 }
 
-interface BuyNumberResponse {
-  activation?: {
-    id: number
-    phone: string
-  }
-  refund?: number
-  message?: string
+interface ServiceInfo {
+  id: string
+  name: string
 }
 
-interface GetSmsResponse {
+interface CountryInfo {
+  id: string
+  name: string
   code?: string
-  status: string
 }
 
 export class SMSActivate {
@@ -47,6 +44,63 @@ export class SMSActivate {
     }
 
     return JSON.parse(text)
+  }
+
+  async getServices(): Promise<ServiceInfo[]> {
+    try {
+      const result = await this.request<any[]>("/getNumbersStatus", {})
+      return Object.entries(result || {}).map(([id, data]: [string, any]) => ({
+        id,
+        name: data?.name || id,
+      }))
+    } catch (error) {
+      console.error("SMSActivate getServices error:", error)
+      return this.getFallbackServices()
+    }
+  }
+
+  async getCountries(): Promise<CountryInfo[]> {
+    try {
+      const result = await this.request<Record<string, any>>("/getCountries", {})
+      return Object.entries(result || {}).map(([id, data]: [string, any]) => ({
+        id,
+        name: data?.name || id,
+        code: data?.code,
+      }))
+    } catch (error) {
+      console.error("SMSActivate getCountries error:", error)
+      return this.getFallbackCountries()
+    }
+  }
+
+  private getFallbackServices(): ServiceInfo[] {
+    return [
+      { id: "whatsapp", name: "WhatsApp" },
+      { id: "instagram", name: "Instagram" },
+      { id: "telegram", name: "Telegram" },
+      { id: "facebook", name: "Facebook" },
+      { id: "google", name: "Google" },
+      { id: "twitter", name: "Twitter" },
+      { id: "tiktok", name: "TikTok" },
+      { id: "discord", name: "Discord" },
+      { id: "snapchat", name: "Snapchat" },
+      { id: "linkedin", name: "LinkedIn" },
+    ]
+  }
+
+  private getFallbackCountries(): CountryInfo[] {
+    return [
+      { id: "0", name: "Nigeria", code: "+234" },
+      { id: "1", name: "United States", code: "+1" },
+      { id: "2", name: "United Kingdom", code: "+44" },
+      { id: "3", name: "Canada", code: "+1" },
+      { id: "4", name: "Ghana", code: "+233" },
+      { id: "5", name: "Kenya", code: "+254" },
+      { id: "6", name: "South Africa", code: "+27" },
+      { id: "7", name: "India", code: "+91" },
+      { id: "8", name: "Indonesia", code: "+62" },
+      { id: "9", name: "Philippines", code: "+63" },
+    ]
   }
 
   async buyNumber(service: string, country: string): Promise<{
@@ -134,6 +188,15 @@ export class SMSActivate {
       }
     }
   }
+}
+
+interface BuyNumberResponse {
+  activation?: {
+    id: number
+    phone: string
+  }
+  refund?: number
+  message?: string
 }
 
 let smsactivateInstance: SMSActivate | null = null
