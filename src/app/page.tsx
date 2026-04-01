@@ -5,7 +5,7 @@ import { Shield, MessageSquare, CreditCard, Wallet, ArrowRight } from "lucide-re
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-navy">
       <section className="py-24 bg-gradient-to-b from-navy via-navy to-primary-blue/20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
