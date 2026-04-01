@@ -6,8 +6,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Eye, EyeOff, Loader2, Check, X } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Shield, Eye, EyeOff, Loader2, Check, X } from "lucide-react"
 
 interface PasswordRequirement {
   label: string
@@ -21,7 +21,7 @@ const passwordRequirements: PasswordRequirement[] = [
   { label: "Contains number", test: (p) => /\d/.test(p) },
 ]
 
-export default function RegisterPage() {
+export default function AdminRegisterPage() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -29,7 +29,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -41,8 +40,8 @@ export default function RegisterPage() {
     setLoading(true)
     setError("")
 
-    if (!agreeToTerms) {
-      setError("You must agree to the Terms of Service and Privacy Policy")
+    if (email !== "admin@smsreseller.com") {
+      setError("Admin email must be admin@smsreseller.com")
       setLoading(false)
       return
     }
@@ -74,7 +73,7 @@ export default function RegisterPage() {
         return
       }
 
-      router.push("/login?registered=true")
+      router.push("/admin/login?registered=true")
     } catch (err) {
       setError("Something went wrong")
       setLoading(false)
@@ -85,11 +84,20 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-navy flex items-center justify-center p-4 py-20">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-light-lavender mt-2">Join us today - it's free!</p>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Shield className="h-10 w-10 text-primary-blue" />
+            <h1 className="text-3xl font-bold text-white">SMSReseller</h1>
+          </div>
+          <p className="text-light-lavender mt-2">Admin Portal</p>
         </div>
         
         <Card className="bg-navy/80 border-light-lavender/20 backdrop-blur">
+          <CardHeader className="text-center">
+            <CardTitle className="text-white text-xl">Admin Registration</CardTitle>
+            <CardDescription className="text-light-lavender">
+              Create an admin account
+            </CardDescription>
+          </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
@@ -112,16 +120,17 @@ export default function RegisterPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white text-sm font-medium">Email</Label>
+                <Label htmlFor="email" className="text-white text-sm font-medium">Admin Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="admin@smsreseller.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-12 bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50 focus:border-mint-green focus:ring-mint-green"
                 />
+                <p className="text-xs text-light-lavender">Only admin@smsreseller.com is allowed</p>
               </div>
               
               <div className="space-y-2">
@@ -130,7 +139,7 @@ export default function RegisterPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
+                    placeholder="Create a strong password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -201,66 +210,32 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Terms and Privacy Checkbox */}
-              <div className="space-y-3 pt-2">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={agreeToTerms}
-                    onChange={(e) => setAgreeToTerms(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-light-lavender/30 bg-white/10 text-mint-green focus:ring-mint-green accent-mint-green"
-                  />
-                  <span className="text-light-lavender text-xs">
-                    I agree to the{" "}
-                    <Link href="/terms" target="_blank" className="text-mint-green hover:underline">
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy" target="_blank" className="text-mint-green hover:underline">
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
-              </div>
-              
               <Button 
                 type="submit" 
-                className="w-full h-12 bg-mint-green text-navy font-semibold hover:bg-mint-green/90 transition-all hover:scale-[1.02] active:scale-[0.98]" 
-                disabled={loading || !passwordsMatch || passwordStrength < 3 || !agreeToTerms}
+                className="w-full h-12 bg-primary-blue text-white font-semibold hover:bg-primary-blue/90 transition-all" 
+                disabled={loading || !passwordsMatch || passwordStrength < 3}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="animate-spin" size={20} />
-                    Creating account...
+                    Creating admin account...
                   </span>
                 ) : (
-                  "Create Account"
+                  "Create Admin Account"
                 )}
               </Button>
             </form>
             
             <div className="mt-6 text-center border-t border-light-lavender/20 pt-4">
-              <p className="text-light-lavender text-sm">
-                Are you an admin?{" "}
-                <Link href="/admin/register" className="text-primary-blue font-semibold hover:underline">
-                  Admin Register
-                </Link>
-              </p>
-            </div>
-            
-            <div className="mt-4 text-center">
-              <p className="text-light-lavender text-sm">
-                Already have an account?{" "}
-                <Link href="/login" className="text-mint-green font-semibold hover:underline">
-                  Sign In
-                </Link>
-              </p>
+              <Link href="/admin/login" className="text-mint-green text-sm hover:underline">
+                Already have an admin account? Sign In
+              </Link>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-light-lavender/50 text-xs mt-6">
-          By creating an account, you agree to our Terms of Service and Privacy Policy
+          Restricted registration. Only for creating admin accounts.
         </p>
       </div>
     </div>

@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -23,6 +23,12 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
+    if (email !== "admin@smsreseller.com") {
+      setError("Only admin@smsreseller.com can access this page")
+      setLoading(false)
+      return
+    }
+
     const result = await signIn("credentials", {
       redirect: false,
       email,
@@ -30,10 +36,10 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setError("Invalid email or password")
+      setError("Invalid admin credentials")
       setLoading(false)
     } else {
-      router.push("/dashboard")
+      router.push("/admin/pricing")
     }
   }
 
@@ -41,11 +47,20 @@ export default function LoginPage() {
     <div className="min-h-screen bg-navy flex items-center justify-center p-4 py-20">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-          <p className="text-light-lavender mt-2">Sign in to your account</p>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Shield className="h-10 w-10 text-primary-blue" />
+            <h1 className="text-3xl font-bold text-white">SMSReseller</h1>
+          </div>
+          <p className="text-light-lavender mt-2">Admin Portal</p>
         </div>
         
         <Card className="bg-navy/80 border-light-lavender/20 backdrop-blur">
+          <CardHeader className="text-center">
+            <CardTitle className="text-white text-xl">Admin Login</CardTitle>
+            <CardDescription className="text-light-lavender">
+              Sign in to access the admin panel
+            </CardDescription>
+          </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
@@ -55,11 +70,11 @@ export default function LoginPage() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white text-sm font-medium">Email</Label>
+                <Label htmlFor="email" className="text-white text-sm font-medium">Admin Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="admin@smsreseller.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -73,7 +88,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    placeholder="Enter admin password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -88,20 +103,10 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-light-lavender/30 bg-white/10 text-mint-green focus:ring-mint-green" />
-                  <span className="text-light-lavender text-sm">Remember me</span>
-                </label>
-                <Link href="/forgot-password" className="text-mint-green text-sm hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
               
               <Button 
                 type="submit" 
-                className="w-full h-12 bg-mint-green text-navy font-semibold hover:bg-mint-green/90 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+                className="w-full h-12 bg-primary-blue text-white font-semibold hover:bg-primary-blue/90 transition-all" 
                 disabled={loading}
               >
                 {loading ? (
@@ -110,33 +115,21 @@ export default function LoginPage() {
                     Signing in...
                   </span>
                 ) : (
-                  "Sign In"
+                  "Sign In to Admin"
                 )}
               </Button>
             </form>
             
             <div className="mt-6 text-center border-t border-light-lavender/20 pt-4">
-              <p className="text-light-lavender text-sm">
-                Are you an admin?{" "}
-                <Link href="/admin/login" className="text-primary-blue font-semibold hover:underline">
-                  Admin Login
-                </Link>
-              </p>
-            </div>
-            
-            <div className="mt-4 text-center">
-              <p className="text-light-lavender text-sm">
-                Don't have an account?{" "}
-                <Link href="/register" className="text-mint-green font-semibold hover:underline">
-                  Create Account
-                </Link>
-              </p>
+              <Link href="/login" className="text-mint-green text-sm hover:underline">
+                Back to User Login
+              </Link>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-light-lavender/50 text-xs mt-6">
-          By signing in, you agree to our Terms of Service and Privacy Policy
+          Restricted access. Only authorized administrators allowed.
         </p>
       </div>
     </div>
