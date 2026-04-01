@@ -43,13 +43,21 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { smsSupplier } = body
+    const { smsSupplier, socialSupplier } = body
 
     if (smsSupplier) {
       await prisma.setting.upsert({
         where: { key: "smsSupplier" },
         update: { value: smsSupplier },
         create: { key: "smsSupplier", value: smsSupplier },
+      })
+    }
+
+    if (socialSupplier) {
+      await prisma.setting.upsert({
+        where: { key: "socialSupplier" },
+        update: { value: socialSupplier },
+        create: { key: "socialSupplier", value: socialSupplier },
       })
     }
 

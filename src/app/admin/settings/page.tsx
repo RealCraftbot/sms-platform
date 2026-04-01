@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { ExternalLink, ShoppingCart, Globe, Server } from "lucide-react"
 
-const suppliers = [
-  { id: "smspool", name: "SMSPool", description: "SMS & Verification", category: "sms" },
-  { id: "smspinverify", name: "SMSPinVerify", description: "SMS & Verification", category: "sms" },
-  { id: "smsactivate", name: "SMS-Activate", description: "SMS & Verification", category: "sms" },
-  { id: "acctshop", name: "AcctShop", description: "Social Media Accounts", category: "social" },
-  { id: "tutads", name: "TutAds", description: "Social Media & Services", category: "social" },
+const smsSuppliersList = [
+  { id: "smspool", name: "SMSPool", description: "SMS & Verification" },
+  { id: "smspinverify", name: "SMSPinVerify", description: "SMS & Verification" },
+  { id: "smsactivate", name: "SMS-Activate", description: "SMS & Verification" },
+]
+
+const socialSuppliersList = [
+  { id: "acctshop", name: "AcctShop", description: "Social Media Accounts" },
+  { id: "tutads", name: "TutAds", description: "Social Media & Services" },
 ]
 
 const externalServices = [
@@ -21,22 +24,21 @@ const externalServices = [
     name: "BabyMaker VPN & Entertainment", 
     url: "https://babymaker.sellpass.io", 
     description: "VPN and entertainment services (no API integration)",
-    category: "vpn"
   },
 ]
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [currentSupplier, setCurrentSupplier] = useState("smspool")
+  const [currentSmsSupplier, setCurrentSmsSupplier] = useState("smspool")
+  const [currentSocialSupplier, setCurrentSocialSupplier] = useState("acctshop")
 
   useEffect(() => {
     fetch("/api/admin/settings")
       .then(res => res.json())
       .then(data => {
-        if (data.smsSupplier) {
-          setCurrentSupplier(data.smsSupplier)
-        }
+        if (data.smsSupplier) setCurrentSmsSupplier(data.smsSupplier)
+        if (data.socialSupplier) setCurrentSocialSupplier(data.socialSupplier)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -48,7 +50,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ smsSupplier: currentSupplier }),
+        body: JSON.stringify({ 
+          smsSupplier: currentSmsSupplier,
+          socialSupplier: currentSocialSupplier
+        }),
       })
       
       if (res.ok) {
@@ -62,9 +67,6 @@ export default function SettingsPage() {
       setSaving(false)
     }
   }
-
-  const smsSuppliers = suppliers.filter(s => s.category === "sms")
-  const socialSuppliers = suppliers.filter(s => s.category === "social")
 
   if (loading) {
     return <div>Loading settings...</div>
@@ -89,18 +91,18 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <RadioGroup 
-            value={currentSupplier} 
-            onValueChange={setCurrentSupplier}
+            value={currentSmsSupplier} 
+            onValueChange={setCurrentSmsSupplier}
             className="space-y-4"
           >
-            {smsSuppliers.map(supplier => (
+            {smsSuppliersList.map(supplier => (
               <div key={supplier.id} className="flex items-center space-x-4 p-4 border border-light-lavender/20 rounded-lg bg-white/5">
                 <RadioGroupItem value={supplier.id} id={supplier.id} className="border-light-lavender" />
                 <Label htmlFor={supplier.id} className="flex-1 cursor-pointer">
                   <span className="font-medium text-white">{supplier.name}</span>
                   <span className="text-light-lavender text-sm ml-2">- {supplier.description}</span>
                 </Label>
-                {currentSupplier === supplier.id && (
+                {currentSmsSupplier === supplier.id && (
                   <Badge variant="default" className="bg-mint-green text-navy">Active</Badge>
                 )}
               </div>
@@ -129,18 +131,18 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <RadioGroup 
-            value={currentSupplier} 
-            onValueChange={setCurrentSupplier}
+            value={currentSocialSupplier} 
+            onValueChange={setCurrentSocialSupplier}
             className="space-y-4"
           >
-            {socialSuppliers.map(supplier => (
+            {socialSuppliersList.map(supplier => (
               <div key={supplier.id} className="flex items-center space-x-4 p-4 border border-light-lavender/20 rounded-lg bg-white/5">
                 <RadioGroupItem value={supplier.id} id={supplier.id} className="border-light-lavender" />
                 <Label htmlFor={supplier.id} className="flex-1 cursor-pointer">
                   <span className="font-medium text-white">{supplier.name}</span>
                   <span className="text-light-lavender text-sm ml-2">- {supplier.description}</span>
                 </Label>
-                {currentSupplier === supplier.id && (
+                {currentSocialSupplier === supplier.id && (
                   <Badge variant="default" className="bg-mint-green text-navy">Active</Badge>
                 )}
               </div>
@@ -189,18 +191,18 @@ export default function SettingsPage() {
 
       <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle className="text-white">All Active Suppliers</CardTitle>
+          <CardTitle className="text-white">Current Active Suppliers</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {suppliers.map(supplier => (
-              <div key={supplier.id} className="flex items-center justify-between p-3 bg-white/5 rounded">
-                <span className="font-medium text-white text-sm">{supplier.name}</span>
-                <Badge variant={currentSupplier === supplier.id ? "default" : "secondary"} className={currentSupplier === supplier.id ? "bg-mint-green text-navy" : ""}>
-                  {currentSupplier === supplier.id ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-white/5 rounded-lg">
+              <p className="text-light-lavender text-sm mb-2">SMS Supplier</p>
+              <p className="text-white font-medium">{smsSuppliersList.find(s => s.id === currentSmsSupplier)?.name}</p>
+            </div>
+            <div className="p-4 bg-white/5 rounded-lg">
+              <p className="text-light-lavender text-sm mb-2">Social Media Supplier</p>
+              <p className="text-white font-medium">{socialSuppliersList.find(s => s.id === currentSocialSupplier)?.name}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
