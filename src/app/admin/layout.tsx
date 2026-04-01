@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Shield, DollarSign, FileText, CreditCard, Settings, Phone, LayoutDashboard } from "lucide-react"
+import { Shield, DollarSign, FileText, CreditCard, Settings, Phone, LayoutDashboard, Server } from "lucide-react"
 
 export default function AdminLayout({
   children,
@@ -63,6 +63,12 @@ export default function AdminLayout({
             <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
               <Phone className="mr-3 h-4 w-4" />
               SMS Suppliers
+            </Button>
+          </Link>
+          <Link href="/admin/services">
+            <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10">
+              <Server className="mr-3 h-4 w-4" />
+              Services & Products
             </Button>
           </Link>
         </nav>
