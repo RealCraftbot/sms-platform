@@ -1,0 +1,5 @@
+[phases.setup]
+nodeVersion = "22"
+
+[phases.install]
+npmVersion = "latest"
