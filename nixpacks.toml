@@ -3,9 +3,14 @@ nixPkgs = ["nodejs_20", "npm-10_x"]
 
 [phases.install]
 nixPkgs = ["openssl"]
+cmds = ["npm ci"]
 
 [phases.build]
 nixPkgs = ["openssl", "pkg-config"]
+cmds = ["npx prisma generate", "npm run build"]
 
 [start]
-runtime = ["openssl"]
+cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
