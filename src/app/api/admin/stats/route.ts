@@ -1,24 +1,32 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+
+// Simple admin auth check - expects x-admin-id header
+async function getAdmin(request: Request) {
+  const adminId = request.headers.get("x-admin-id")
+  const adminEmail = request.headers.get("x-admin-email")
+  
+  if (!adminId && !adminEmail) {
+    return null
+  }
+  
+  if (adminId) {
+    return prisma.admin.findUnique({
+      where: { id: adminId },
+    })
+  }
+  
+  if (adminEmail) {
+    return prisma.admin.findUnique({
+      where: { email: adminEmail },
+    })
+  }
+  
+  return null
+}
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const admin = await prisma.admin.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!admin) {
-      return NextResponse.json({ error: "Admin only" }, { status: 403 })
-    }
-
     const [
       totalUsers,
       totalOrders,

@@ -1,15 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface SMSService {
   id: string
@@ -32,8 +29,9 @@ interface Stats {
 }
 
 export default function AdminDashboardPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
   const [smsServices, setSmsServices] = useState<SMSService[]>([])
   const [socialProducts, setSocialProducts] = useState<SocialProduct[]>([])
@@ -41,28 +39,42 @@ export default function AdminDashboardPage() {
   const [socialSupplier, setSocialSupplier] = useState("tutads")
   const [smsBalance, setSmsBalance] = useState<number | null>(null)
   const [socialBalance, setSocialBalance] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
 
+  // Check admin authentication
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmail) {
+      router.push("/admin-login")
+      return
     }
-  }, [status, router])
+    
+    setIsAdmin(true)
+  }, [router])
 
+  // Fetch data
   useEffect(() => {
-    if (session?.user?.email !== "admin@smsreseller.com") return
+    if (!isAdmin) return
 
     const fetchData = async () => {
+      const adminId = localStorage.getItem("adminId")
+      const headers: Record<string, string> = {}
+      if (adminId) {
+        headers["x-admin-id"] = adminId
+      }
+
       try {
-        // Fetch stats
-        const statsRes = await fetch("/api/admin/stats")
+        const [statsRes, servicesRes] = await Promise.all([
+          fetch("/api/admin/stats", { headers }),
+          fetch("/api/admin/services", { headers }),
+        ])
+
         if (statsRes.ok) {
           const statsData = await statsRes.json()
           setStats(statsData)
         }
 
-        // Fetch services/products
-        const servicesRes = await fetch("/api/admin/services")
         if (servicesRes.ok) {
           const servicesData = await servicesRes.json()
           setSmsServices(servicesData.sms?.services || [])
@@ -80,9 +92,9 @@ export default function AdminDashboardPage() {
     }
 
     fetchData()
-  }, [session])
+  }, [isAdmin])
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-pulse text-lg">Loading...</div>
@@ -90,12 +102,8 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (session?.user?.email !== "admin@smsreseller.com") {
-    return (
-      <div className="p-8">
-        <div className="text-red-500">Access denied. Admin only.</div>
-      </div>
-    )
+  if (!isAdmin) {
+    return null
   }
 
   return (
