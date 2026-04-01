@@ -5,14 +5,14 @@ interface AcctShopConfig {
 }
 
 interface BuyResponse {
-  success: boolean
+  success: boolean | number
   order_id?: string
   phone?: string
   message?: string
 }
 
 interface GetSmsResponse {
-  success: boolean
+  success: boolean | number
   sms?: string
   code?: string
   message?: string
