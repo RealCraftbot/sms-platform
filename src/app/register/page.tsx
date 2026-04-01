@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2, Check, X } from "lucide-react"
 
 interface PasswordRequirement {
@@ -29,6 +29,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -39,6 +40,12 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    if (!agreeToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy")
+      setLoading(false)
+      return
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
@@ -193,11 +200,33 @@ export default function RegisterPage() {
                   </p>
                 )}
               </div>
+
+              {/* Terms and Privacy Checkbox */}
+              <div className="space-y-3 pt-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={agreeToTerms}
+                    onChange={(e) => setAgreeToTerms(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-light-lavender/30 bg-white/10 text-mint-green focus:ring-mint-green accent-mint-green"
+                  />
+                  <span className="text-light-lavender text-xs">
+                    I agree to the{" "}
+                    <Link href="/terms" target="_blank" className="text-mint-green hover:underline">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" target="_blank" className="text-mint-green hover:underline">
+                      Privacy Policy
+                    </Link>
+                  </span>
+                </label>
+              </div>
               
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-mint-green text-navy font-semibold hover:bg-mint-green/90 transition-all hover:scale-[1.02] active:scale-[0.98]" 
-                disabled={loading || !passwordsMatch || passwordStrength < 3}
+                disabled={loading || !passwordsMatch || passwordStrength < 3 || !agreeToTerms}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
