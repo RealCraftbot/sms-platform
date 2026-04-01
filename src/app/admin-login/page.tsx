@@ -103,7 +103,7 @@ export default function AdminLoginPage() {
                   </button>
                 </div>
               </div>
-              
+
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-primary-blue text-white font-semibold hover:bg-primary-blue/90 transition-all" 

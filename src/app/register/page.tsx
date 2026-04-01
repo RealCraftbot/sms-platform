@@ -242,7 +242,7 @@ export default function RegisterPage() {
             <div className="mt-6 text-center border-t border-light-lavender/20 pt-4">
               <p className="text-light-lavender text-sm">
                 Are you an admin?{" "}
-                <Link href="/admin/register" className="text-primary-blue font-semibold hover:underline">
+                <Link href="/admin-register" className="text-primary-blue font-semibold hover:underline">
                   Admin Register
                 </Link>
               </p>

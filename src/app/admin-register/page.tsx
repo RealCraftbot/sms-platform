@@ -73,7 +73,7 @@ export default function AdminRegisterPage() {
         return
       }
 
-      router.push("/admin/login?registered=true")
+      router.push("/admin-login?registered=true")
     } catch (err) {
       setError("Something went wrong")
       setLoading(false)
@@ -101,7 +101,7 @@ export default function AdminRegisterPage() {
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="p-3 text-sm text-red-400 bg-red-500/20 border border-red-500/30 rounded-lg animate-shake">
+                <div className="p-3 text-sm text-red-400 bg-red-500/20 border border-red-500/30 rounded-lg">
                   {error}
                 </div>
               )}
@@ -227,7 +227,7 @@ export default function AdminRegisterPage() {
             </form>
             
             <div className="mt-6 text-center border-t border-light-lavender/20 pt-4">
-              <Link href="/admin/login" className="text-mint-green text-sm hover:underline">
+              <Link href="/admin-login" className="text-mint-green text-sm hover:underline">
                 Already have an admin account? Sign In
               </Link>
             </div>
