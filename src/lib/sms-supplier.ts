@@ -6,7 +6,7 @@ import { getTutAds } from "./tutads"
 import { getAccSMTP } from "./accsmtp"
 
 export type Supplier = "smspool" | "smspinverify" | "smsactivate" | "acctshop" | "tutads"
-export type SocialSupplier = "tutads" | "accsmtp"
+export type SocialSupplierType = "tutads" | "accsmtp"
 
 export interface SMSResult {
   success: boolean
@@ -67,7 +67,7 @@ export function getSupplier(type: Supplier): SMSSupplier {
   }
 }
 
-export function getSocialSupplier(type: SocialSupplier): SocialSupplier {
+export function getSocialSupplier(type: SocialSupplierType): SocialSupplier {
   switch (type) {
     case "tutads":
       return getTutAds() as unknown as SocialSupplier
