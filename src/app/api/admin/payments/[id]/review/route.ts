@@ -2,6 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getSupplier, Supplier } from "@/lib/sms-supplier"
+
+async function getActiveSupplier(): Promise<Supplier> {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "smsSupplier" },
+  })
+  return (setting?.value as Supplier) || "smspool"
+}
 
 export async function POST(
   request: Request,
@@ -67,14 +75,40 @@ export async function POST(
       })
 
       if (order && order.type === "sms") {
-        const phoneNumber = "+234" + Math.floor(Math.random() * 900000000 + 100000000)
-        await prisma.sMSOrder.update({
+        const smsOrder = await prisma.sMSOrder.findUnique({
           where: { orderId: order.id },
-          data: {
-            phoneNumber,
-            expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-          }
         })
+
+        if (smsOrder) {
+          try {
+            const supplierType = await getActiveSupplier()
+            const supplier = getSupplier(supplierType)
+            const result = await supplier.buyNumber(smsOrder.service, smsOrder.country)
+
+            if (result.success && result.phoneNumber && result.orderId) {
+              await prisma.sMSOrder.update({
+                where: { orderId: order.id },
+                data: {
+                  phoneNumber: result.phoneNumber,
+                  supplierOrderId: result.orderId,
+                  expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+                }
+              })
+            } else {
+              console.error("SMS supplier failed:", result.message)
+              await prisma.order.update({
+                where: { id: order.id },
+                data: { status: "failed" },
+              })
+            }
+          } catch (error) {
+            console.error("Error fetching phone from supplier:", error)
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { status: "failed" },
+            })
+          }
+        }
       } else if (order && order.type === "log") {
         const logOrder = await prisma.logOrder.findUnique({
           where: { orderId: order.id },

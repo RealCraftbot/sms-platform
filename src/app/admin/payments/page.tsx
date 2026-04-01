@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label"
 
 interface PendingPayment {
   id: string
-  screenshotUrl: string
+  proofUrl: string
   notes: string | null
   uploadedAt: string
   order: {
     id: string
     amount: number
+    type: string
     user: {
       email: string
       name: string | null
@@ -111,12 +112,12 @@ export default function PaymentsPage() {
                   <TableCell className="font-semibold">₦{payment.order.amount}</TableCell>
                   <TableCell>
                     <a 
-                      href={payment.screenshotUrl} 
+                      href={payment.proofUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
-                      View Screenshot
+                      View Proof
                     </a>
                   </TableCell>
                   <TableCell>{payment.notes || "-"}</TableCell>

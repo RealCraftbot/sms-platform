@@ -7,74 +7,35 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-declare global {
-  interface Window {
-    PaystackPop: any
-  }
-}
+import { Badge } from "@/components/ui/badge"
 
 export default function WalletPage() {
   const router = useRouter()
   const [amount, setAmount] = useState("")
-  const [loading, setLoading] = useState(false)
   const [manualFile, setManualFile] = useState<File | null>(null)
   const [manualNotes, setManualNotes] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [uploadedUrl, setUploadedUrl] = useState("")
 
-  const handlePaystackPayment = async () => {
-    if (!amount || parseFloat(amount) <= 0) return
-    setLoading(true)
+  const handleCloudinaryUpload = async (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
 
     try {
-      const res = await fetch("/api/payments/paystack/initialize", {
+      const res = await fetch("/api/upload/proof", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: parseFloat(amount),
-          type: "deposit",
-        }),
+        body: formData,
       })
-
+      
       const data = await res.json()
-
-      if (!res.ok) {
-        alert(data.error || "Payment initialization failed")
-        setLoading(false)
-        return
+      if (data.success) {
+        setUploadedUrl(data.url)
+        return true
       }
-
-      if (window.PaystackPop) {
-        const handler = window.PaystackPop.setup({
-          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
-          email: data.email,
-          amount: data.amount * 100,
-          currency: "NGN",
-          ref: data.reference,
-          callback: async (response: any) => {
-            await fetch("/api/payments/paystack/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                reference: response.reference,
-              }),
-            })
-            alert("Payment successful!")
-            setLoading(false)
-          },
-          onClose: () => {
-            setLoading(false)
-          },
-        })
-        handler.openIframe()
-      } else {
-        // Fallback - just show the authorization URL
-        window.open(data.authorizationUrl, "_blank")
-        setLoading(false)
-      }
+      return false
     } catch (err) {
-      alert("Something went wrong")
-      setLoading(false)
+      console.error("Upload error:", err)
+      return false
     }
   }
 
@@ -82,15 +43,20 @@ export default function WalletPage() {
     if (!manualFile || !amount) return
     setUploading(true)
 
-    // First create a deposit order
     try {
-      const orderRes = await fetch("/api/sms/order", {
+      const uploadSuccess = await handleCloudinaryUpload(manualFile)
+      if (!uploadSuccess) {
+        alert("Failed to upload proof. Please try again.")
+        setUploading(false)
+        return
+      }
+
+      const orderRes = await fetch("/api/payments/manual/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          service: "deposit",
-          country: "ng",
-          paymentMethodId: "manual",
+          proofUrl: uploadedUrl,
+          notes: manualNotes,
           amount: parseFloat(amount),
         }),
       })
@@ -98,32 +64,12 @@ export default function WalletPage() {
       const orderData = await orderRes.json()
 
       if (!orderRes.ok) {
-        alert(orderData.error || "Failed to create deposit")
+        alert(orderData.error || "Failed to submit payment")
         setUploading(false)
         return
       }
 
-      // Upload the screenshot
-      const formData = new FormData()
-      formData.append("orderId", orderData.id)
-      formData.append("screenshot", manualFile)
-      formData.append("notes", manualNotes)
-      formData.append("amount", amount)
-
-      const uploadRes = await fetch("/api/payments/manual/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      const uploadData = await uploadRes.json()
-
-      if (!uploadRes.ok) {
-        alert(uploadData.error || "Upload failed")
-        setUploading(false)
-        return
-      }
-
-      alert("Payment uploaded! Please wait for admin approval.")
+      alert("Payment submitted! Please wait for admin approval.")
       router.push("/dashboard/orders")
     } catch (err) {
       alert("Something went wrong")
@@ -148,96 +94,124 @@ export default function WalletPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="paystack" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="paystack">Paystack (Card/Bank/USSD)</TabsTrigger>
-          <TabsTrigger value="manual">Manual Transfer</TabsTrigger>
-        </TabsList>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="opacity-60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Paystack</CardTitle>
+              <Badge variant="secondary">Coming Soon</Badge>
+            </div>
+            <CardDescription>Card, Bank, USSD</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button disabled className="w-full">
+              Coming Soon
+            </Button>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="paystack">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pay with Paystack</CardTitle>
-              <CardDescription>Pay using card, bank transfer, or USSD</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Amount (NGN)</Label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-              <Button 
-                onClick={handlePaystackPayment} 
-                disabled={!amount || parseFloat(amount) <= 0 || loading}
-                className="w-full"
-              >
-                {loading ? "Processing..." : "Pay with Paystack"}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                You will be redirected to Paystack to complete your payment
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card className="opacity-60">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Crypto</CardTitle>
+              <Badge variant="secondary">Coming Soon</Badge>
+            </div>
+            <CardDescription>Bitcoin, USDT, ETH</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button disabled className="w-full">
+              Coming Soon
+            </Button>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="manual">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manual Bank Transfer</CardTitle>
-              <CardDescription>
-                Transfer to our bank account and upload the receipt
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="font-semibold mb-2">Bank Details:</p>
-                <p>Bank: First Bank of Nigeria</p>
-                <p>Account Name: SMSReseller Ltd</p>
-                <p>Account Number: 1234567890</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Amount (NGN)</Label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Transfer Screenshot</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setManualFile(e.target.files?.[0] || null)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Notes (Optional)</Label>
-                <Input
-                  placeholder="Any additional notes"
-                  value={manualNotes}
-                  onChange={(e) => setManualNotes(e.target.value)}
-                />
-              </div>
-              <Button 
-                onClick={handleManualUpload} 
-                disabled={!manualFile || !amount || uploading}
-                className="w-full"
-              >
-                {uploading ? "Uploading..." : "Submit Payment"}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Your payment will be reviewed by admin within 24 hours
+        <Card className="border-primary">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Manual Transfer</CardTitle>
+              <Badge variant="default">Active</Badge>
+            </div>
+            <CardDescription>Bank transfer with proof</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <a href="#manual-transfer">Pay Now</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div id="manual-transfer">
+        <Card>
+          <CardHeader>
+            <CardTitle>Manual Bank Transfer</CardTitle>
+            <CardDescription>
+              Transfer to our bank account and upload the receipt. Orders will be fulfilled after admin approval.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-semibold mb-2">Bank Details:</p>
+              <p>Bank: First Bank of Nigeria</p>
+              <p>Account Name: SMSReseller Ltd</p>
+              <p>Account Number: 1234567890</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Amount (NGN)</Label>
+              <Input
+                type="number"
+                placeholder="Enter amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Transfer Screenshot (Proof of Payment)</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0] || null
+                  setManualFile(file)
+                  if (file) {
+                    setUploading(true)
+                    const success = await handleCloudinaryUpload(file)
+                    if (!success) {
+                      alert("Upload failed")
+                    }
+                    setUploading(false)
+                  }
+                }}
+                disabled={uploading}
+              />
+              {uploadedUrl && (
+                <p className="text-sm text-green-600">Proof uploaded successfully!</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Screenshot will be uploaded to Cloudinary for secure storage
               </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (Optional)</Label>
+              <Input
+                placeholder="Any additional notes"
+                value={manualNotes}
+                onChange={(e) => setManualNotes(e.target.value)}
+              />
+            </div>
+            <Button 
+              onClick={handleManualUpload} 
+              disabled={!manualFile || !amount || uploading || !uploadedUrl}
+              className="w-full"
+            >
+              {uploading ? "Processing..." : "Submit Payment for Approval"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Your payment will be reviewed by admin. Orders are fulfilled only after manual approval.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

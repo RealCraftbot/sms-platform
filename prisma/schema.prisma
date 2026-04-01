@@ -144,7 +144,7 @@ model ManualPayment {
   id            String   @id @default(uuid())
   orderId       String   @unique
   userId        String
-  screenshotUrl String
+  proofUrl      String
   notes         String?
   uploadedAt    DateTime @default(now())
   reviewedBy    String?
@@ -155,4 +155,11 @@ model ManualPayment {
   order         Order    @relation(fields: [orderId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
   reviewer      Admin?   @relation(fields: [reviewedBy], references: [id])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }

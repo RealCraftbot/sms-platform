@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DollarSign, FileText, CreditCard, Settings } from "lucide-react"
+import { DollarSign, FileText, CreditCard, Settings, Phone } from "lucide-react"
 
 export default function AdminLayout({
   children,
@@ -56,6 +56,12 @@ export default function AdminLayout({
             <Button variant="ghost" className="w-full justify-start">
               <FileText className="mr-2 h-4 w-4" />
               Upload Logs
+            </Button>
+          </Link>
+          <Link href="/admin/settings">
+            <Button variant="ghost" className="w-full justify-start">
+              <Phone className="mr-2 h-4 w-4" />
+              SMS Suppliers
             </Button>
           </Link>
           <Link href="/dashboard">

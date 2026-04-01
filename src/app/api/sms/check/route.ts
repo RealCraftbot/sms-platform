@@ -2,7 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getSMSPool } from "@/lib/smspool"
+import { getSupplier, Supplier } from "@/lib/sms-supplier"
+
+async function getActiveSupplier(): Promise<Supplier> {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "smsSupplier" },
+  })
+  return (setting?.value as Supplier) || "smspool"
+}
 
 export async function POST(request: Request) {
   try {
@@ -48,8 +55,9 @@ export async function POST(request: Request) {
     }
 
     try {
-      const smspool = getSMSPool()
-      const result = await smspool.getSms(smsOrder.supplierOrderId)
+      const supplierType = await getActiveSupplier()
+      const supplier = getSupplier(supplierType)
+      const result = await supplier.getSms(smsOrder.supplierOrderId)
 
       if (result.success && result.sms) {
         await prisma.sMSOrder.update({

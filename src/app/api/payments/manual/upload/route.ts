@@ -2,8 +2,6 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
 
 export async function POST(request: Request) {
   try {
@@ -13,21 +11,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const formData = await request.formData()
-    const orderId = formData.get("orderId") as string
-    const notes = formData.get("notes") as string
-    const file = formData.get("screenshot") as File
+    const body = await request.json()
+    const { proofUrl, notes, amount } = body
 
-    if (!orderId) {
+    if (!proofUrl || !amount) {
       return NextResponse.json(
-        { error: "Order ID is required" },
-        { status: 400 }
-      )
-    }
-
-    if (!file) {
-      return NextResponse.json(
-        { error: "Screenshot is required" },
+        { error: "Proof URL and amount are required" },
         { status: 400 }
       )
     }
@@ -40,42 +29,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    const paymentMethod = await prisma.paymentMethod.findFirst({
+      where: { type: "manual" },
     })
 
-    if (!order || order.userId !== user.id) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    if (!paymentMethod) {
+      return NextResponse.json({ error: "Manual payment method not configured" }, { status: 500 })
     }
 
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
-    const uploadDir = path.join(process.cwd(), "public", "uploads")
-    await mkdir(uploadDir, { recursive: true })
-    
-    const filename = `${Date.now()}-${file.name}`
-    const filePath = path.join(uploadDir, filename)
-    await writeFile(filePath, buffer)
-
-    const manualPayment = await prisma.manualPayment.create({
+    const order = await prisma.order.create({
       data: {
-        orderId,
         userId: user.id,
-        screenshotUrl: `/uploads/${filename}`,
-        notes,
-      },
-    })
-
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
+        paymentMethodId: paymentMethod.id,
+        type: "deposit",
         status: "awaiting_approval",
+        amount,
+        currency: "NGN",
+        manualPayment: {
+          create: {
+            userId: user.id,
+            proofUrl,
+            notes,
+            status: "pending_review",
+          },
+        },
+      },
+      include: {
+        manualPayment: true,
       },
     })
 
-    return NextResponse.json(manualPayment)
+    return NextResponse.json({
+      success: true,
+      orderId: order.id,
+      message: "Payment submitted for approval",
+    })
   } catch (error) {
     console.error("Manual payment upload error:", error)
     return NextResponse.json(

@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
-import { getSMSPool } from "@/lib/smspool"
+import { getSupplier, Supplier } from "@/lib/sms-supplier"
+
+async function getActiveSupplier(): Promise<Supplier> {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "smsSupplier" },
+  })
+  return (setting?.value as Supplier) || "smspool"
+}
 
 export async function POST(request: Request) {
   try {
@@ -51,8 +58,9 @@ export async function POST(request: Request) {
 
           if (smsOrder) {
             try {
-              const smspool = getSMSPool()
-              const result = await smspool.buyNumber(smsOrder.service, smsOrder.country)
+              const supplierType = await getActiveSupplier()
+              const supplier = getSupplier(supplierType)
+              const result = await supplier.buyNumber(smsOrder.service, smsOrder.country)
 
               if (result.success && result.phoneNumber && result.orderId) {
                 await prisma.sMSOrder.update({
@@ -64,14 +72,14 @@ export async function POST(request: Request) {
                   }
                 })
               } else {
-                console.error("SMSPool failed to get number:", result.message)
+                console.error("SMS supplier failed:", result.message)
                 await prisma.order.update({
                   where: { id: order.id },
                   data: { status: "failed" },
                 })
               }
             } catch (error) {
-              console.error("Error fetching phone from SMSPool:", error)
+              console.error("Error fetching phone from supplier:", error)
               await prisma.order.update({
                 where: { id: order.id },
                 data: { status: "failed" },
