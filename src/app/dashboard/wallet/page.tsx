@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,10 +12,22 @@ import { Badge } from "@/components/ui/badge"
 export default function WalletPage() {
   const router = useRouter()
   const [amount, setAmount] = useState("")
+  const [balance, setBalance] = useState<number>(0)
+  const [loadingBalance, setLoadingBalance] = useState(true)
   const [manualFile, setManualFile] = useState<File | null>(null)
   const [manualNotes, setManualNotes] = useState("")
   const [uploading, setUploading] = useState(false)
   const [uploadedUrl, setUploadedUrl] = useState("")
+
+  useEffect(() => {
+    fetch("/api/wallet/balance")
+      .then(res => res.json())
+      .then(data => {
+        setBalance(parseFloat(data.balance) || 0)
+        setLoadingBalance(false)
+      })
+      .catch(() => setLoadingBalance(false))
+  }, [])
 
   const handleCloudinaryUpload = async (file: File) => {
     const formData = new FormData()
@@ -87,10 +99,14 @@ export default function WalletPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current Balance</CardTitle>
-          <CardDescription>Your available funds</CardDescription>
+          <CardDescription>Your available funds for orders</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-4xl font-bold">₦0.00</div>
+          {loadingBalance ? (
+            <div className="text-4xl font-bold">Loading...</div>
+          ) : (
+            <div className="text-4xl font-bold">₦{balance.toLocaleString()}</div>
+          )}
         </CardContent>
       </Card>
 
@@ -135,7 +151,7 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <a href="#manual-transfer">Pay Now</a>
+              <a href="#manual-transfer">Fund Wallet</a>
             </Button>
           </CardContent>
         </Card>
@@ -146,7 +162,7 @@ export default function WalletPage() {
           <CardHeader>
             <CardTitle>Manual Bank Transfer</CardTitle>
             <CardDescription>
-              Transfer to our bank account and upload the receipt. Orders will be fulfilled after admin approval.
+              Transfer to our bank account and upload the receipt. Funds will be added to your wallet after admin approval.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -207,7 +223,7 @@ export default function WalletPage() {
               {uploading ? "Processing..." : "Submit Payment for Approval"}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Your payment will be reviewed by admin. Orders are fulfilled only after manual approval.
+              Your payment will be reviewed by admin. Funds are added to wallet after approval.
             </p>
           </CardContent>
         </Card>

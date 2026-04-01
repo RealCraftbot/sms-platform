@@ -1,14 +1,6 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
-import { getSupplier, Supplier } from "@/lib/sms-supplier"
-
-async function getActiveSupplier(): Promise<Supplier> {
-  const setting = await prisma.setting.findUnique({
-    where: { key: "smsSupplier" },
-  })
-  return (setting?.value as Supplier) || "smspool"
-}
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +24,7 @@ export async function POST(request: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data.reference
-      const amount = event.data.amount / 100 // Paystack sends in kobo
+      const amount = event.data.amount / 100
 
       const transaction = await prisma.transaction.findFirst({
         where: { reference },
@@ -45,66 +37,25 @@ export async function POST(request: Request) {
           data: { status: "success", providerTxId: event.data.id.toString() },
         })
 
-        const order = await prisma.order.update({
+        const order = await prisma.order.findUnique({
           where: { id: transaction.orderId },
-          data: { status: "paid" },
         })
 
-        // Process the order based on type
-        if (order.type === "sms") {
-          const smsOrder = await prisma.sMSOrder.findUnique({
-            where: { orderId: order.id },
-          })
+        if (!order) {
+          return NextResponse.json({ error: "Order not found" }, { status: 404 })
+        }
 
-          if (smsOrder) {
-            try {
-              const supplierType = await getActiveSupplier()
-              const supplier = getSupplier(supplierType)
-              const result = await supplier.buyNumber(smsOrder.service, smsOrder.country)
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: "completed" },
+        })
 
-              if (result.success && result.phoneNumber && result.orderId) {
-                await prisma.sMSOrder.update({
-                  where: { orderId: order.id },
-                  data: {
-                    phoneNumber: result.phoneNumber,
-                    supplierOrderId: result.orderId,
-                    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-                  }
-                })
-              } else {
-                console.error("SMS supplier failed:", result.message)
-                await prisma.order.update({
-                  where: { id: order.id },
-                  data: { status: "failed" },
-                })
-              }
-            } catch (error) {
-              console.error("Error fetching phone from supplier:", error)
-              await prisma.order.update({
-                where: { id: order.id },
-                data: { status: "failed" },
-              })
-            }
-          }
-        } else if (order.type === "log") {
-          const logOrder = await prisma.logOrder.findUnique({
-            where: { orderId: order.id },
+        if (order.type === "deposit") {
+          await prisma.user.update({
+            where: { id: order.userId },
+            data: { balance: { increment: order.amount } },
           })
-          if (logOrder) {
-            const logIds = logOrder.items as string[]
-            await prisma.socialLog.updateMany({
-              where: { id: { in: logIds } },
-              data: {
-                status: "sold",
-                soldToId: order.userId,
-                soldAt: new Date(),
-              }
-            })
-            await prisma.order.update({
-              where: { id: order.id },
-              data: { status: "completed" },
-            })
-          }
+          console.log(`Added ₦${order.amount} to user wallet`)
         }
       }
     }

@@ -2,6 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getSupplier, Supplier } from "@/lib/sms-supplier"
+
+async function getActiveSupplier(): Promise<Supplier> {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "smsSupplier" },
+  })
+  return (setting?.value as Supplier) || "smspool"
+}
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +47,6 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email! },
-      include: { orders: true }
     })
 
     if (!user) {
@@ -54,11 +61,104 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payment method" }, { status: 400 })
     }
 
-    let orderStatus: string
+    const orderAmount = pricingRule.finalPrice
+
+    if (paymentMethod.type === "wallet") {
+      if (user.balance.lt(orderAmount)) {
+        return NextResponse.json(
+          { error: `Insufficient funds. Your balance: ₦${user.balance}, Required: ₦${orderAmount}` },
+          { status: 400 }
+        )
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          balance: { decrement: orderAmount },
+        },
+      })
+
+      const order = await prisma.order.create({
+        data: {
+          userId: user.id,
+          paymentMethodId,
+          type: "sms",
+          status: "paid",
+          amount: orderAmount,
+          currency: "NGN",
+          smsOrder: {
+            create: {
+              service,
+              country,
+            }
+          }
+        },
+        include: {
+          smsOrder: true,
+          paymentMethod: true,
+        }
+      })
+
+      const smsOrder = order.smsOrder
+      if (smsOrder) {
+        try {
+          const supplierType = await getActiveSupplier()
+          const supplier = getSupplier(supplierType)
+          const result = await supplier.buyNumber(smsOrder.service, smsOrder.country)
+
+          if (result.success && result.phoneNumber && result.orderId) {
+            await prisma.sMSOrder.update({
+              where: { orderId: order.id },
+              data: {
+                phoneNumber: result.phoneNumber,
+                supplierOrderId: result.orderId,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+              }
+            })
+          } else {
+            console.error("SMS supplier failed:", result.message)
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { status: "failed" },
+            })
+          }
+        } catch (error) {
+          console.error("Error fetching phone from supplier:", error)
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { status: "failed" },
+          })
+        }
+      }
+
+      return NextResponse.json({
+        ...order,
+        remainingBalance: updatedUser.balance,
+      })
+    }
+
     if (paymentMethod.type === "auto") {
-      orderStatus = "pending"
-    } else {
-      orderStatus = "awaiting_approval"
+      const order = await prisma.order.create({
+        data: {
+          userId: user.id,
+          paymentMethodId,
+          type: "sms",
+          status: "pending",
+          amount: orderAmount,
+          currency: "NGN",
+          smsOrder: {
+            create: {
+              service,
+              country,
+            }
+          }
+        },
+        include: {
+          smsOrder: true,
+          paymentMethod: true,
+        }
+      })
+      return NextResponse.json(order)
     }
 
     const order = await prisma.order.create({
@@ -66,8 +166,8 @@ export async function POST(request: Request) {
         userId: user.id,
         paymentMethodId,
         type: "sms",
-        status: orderStatus,
-        amount: pricingRule.finalPrice,
+        status: "awaiting_approval",
+        amount: orderAmount,
         currency: "NGN",
         smsOrder: {
           create: {

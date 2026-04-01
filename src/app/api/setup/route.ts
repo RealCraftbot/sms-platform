@@ -151,7 +151,7 @@ export async function GET() {
     // Insert default data
     await prisma.$executeRaw`
       INSERT INTO "PaymentMethod" (id, name, type, isActive) 
-      VALUES ('paystack', 'Paystack', 'auto', true), ('manual', 'Manual Transfer', 'manual', true)
+      VALUES ('wallet', 'Wallet', 'wallet', true), ('paystack', 'Paystack', 'auto', true), ('manual', 'Manual Transfer', 'manual', true)
       ON CONFLICT (id) DO NOTHING
     `
     
