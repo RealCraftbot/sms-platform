@@ -27,6 +27,7 @@ const adminNavLinks = [
   { href: "/admin/pricing", label: "Pricing" },
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/logs", label: "Upload Logs" },
+  { href: "/admin/settings", label: "SMS Suppliers" },
 ]
 
 export function Header() {

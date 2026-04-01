@@ -19,6 +19,7 @@ const adminNavItems = [
   { href: "/admin/pricing", label: "Pricing", icon: Settings },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/logs", label: "Upload Logs", icon: FileText },
+  { href: "/admin/settings", label: "SMS Suppliers", icon: Shield },
 ]
 
 export default function DashboardLayout({
