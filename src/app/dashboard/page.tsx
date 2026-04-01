@@ -1,7 +1,7 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,9 +15,10 @@ import {
   CreditCard,
   ArrowUpRight,
   ArrowDownRight,
-  Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Clock,
+  Loader2
 } from "lucide-react"
 
 interface StatCard {
@@ -29,36 +30,73 @@ interface StatCard {
   href?: string
 }
 
-const stats: StatCard[] = [
-  { title: "Balance", value: "₦0.00", icon: <Wallet className="h-5 w-5" />, href: "/dashboard/wallet" },
-  { title: "Total Orders", value: "0", icon: <FileText className="h-5 w-5" />, href: "/dashboard/orders" },
-  { title: "SMS Verifications", value: "0", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/sms/order" },
-  { title: "Social Logs", value: "0", icon: <Users className="h-5 w-5" />, href: "/dashboard/logs" },
-]
+interface RecentOrder {
+  id: string
+  type: string
+  serviceName?: string | null
+  country?: string | null
+  amount: string
+  status: string
+  createdAt: string
+}
 
-const quickActions = [
-  { title: "Order SMS", description: "Get verification numbers", icon: <MessageSquare className="h-6 w-6" />, href: "/dashboard/sms/order", color: "bg-primary-blue" },
-  { title: "Buy Social Logs", description: "Purchase accounts", icon: <Users className="h-6 w-6" />, href: "/dashboard/logs", color: "bg-mint-green" },
-  { title: "Add Funds", description: "Top up wallet", icon: <CreditCard className="h-6 w-6" />, href: "/dashboard/wallet", color: "bg-lime-yellow" },
-  { title: "View Orders", description: "Order history", icon: <FileText className="h-6 w-6" />, href: "/dashboard/orders", color: "bg-light-lavender" },
-]
+interface DashboardData {
+  balance: string
+  totalOrders: number
+  smsOrders: number
+  logOrders: number
+  pendingOrders: number
+  completedOrders: number
+  recentOrders: RecentOrder[]
+  services: { name: string; count: number }[]
+}
 
-const recentOrders = [
-  { id: "1", type: "SMS", service: "WhatsApp", country: "Nigeria", amount: "₦600", status: "completed", date: "2 hours ago" },
-  { id: "2", type: "Log", platform: "Instagram", amount: "₦2,500", status: "pending", date: "1 day ago" },
-]
-
-const services = [
-  { name: "WhatsApp", price: "₦600", orders: 45 },
-  { name: "Instagram", price: "₦600", orders: 32 },
-  { name: "Telegram", price: "₦500", orders: 28 },
-  { name: "Facebook", price: "₦550", orders: 21 },
-  { name: "Google", price: "₦600", orders: 18 },
-]
+const statusColors: Record<string, string> = {
+  pending: "bg-yellow-500/20 text-yellow-400",
+  paid: "bg-green-500/20 text-green-400",
+  awaiting_approval: "bg-orange-500/20 text-orange-400",
+  approved: "bg-green-500/20 text-green-400",
+  completed: "bg-green-500/20 text-green-400",
+  cancelled: "bg-red-500/20 text-red-400",
+  failed: "bg-red-500/20 text-red-400",
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<DashboardData | null>(null)
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then(res => res.json())
+      .then(data => {
+        setData(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-navy p-4 md:p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-mint-green" />
+      </div>
+    )
+  }
+
+  const stats: StatCard[] = [
+    { title: "Balance", value: `₦${data?.balance || "0"}`, icon: <Wallet className="h-5 w-5" />, href: "/dashboard/wallet" },
+    { title: "Total Orders", value: data?.totalOrders || 0, icon: <FileText className="h-5 w-5" />, href: "/dashboard/orders" },
+    { title: "SMS Orders", value: data?.smsOrders || 0, icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/orders" },
+    { title: "Social Logs", value: data?.logOrders || 0, icon: <Users className="h-5 w-5" />, href: "/dashboard/logs" },
+  ]
+
+  const quickActions = [
+    { title: "Order SMS", description: "Get verification numbers", icon: <MessageSquare className="h-6 w-6" />, href: "/dashboard/sms/order", color: "bg-primary-blue" },
+    { title: "Buy Social Logs", description: "Purchase accounts", icon: <Users className="h-6 w-6" />, href: "/dashboard/logs", color: "bg-mint-green" },
+    { title: "Add Funds", description: "Top up wallet", icon: <CreditCard className="h-6 w-6" />, href: "/dashboard/wallet", color: "bg-lime-yellow" },
+    { title: "View Orders", description: "Order history", icon: <FileText className="h-6 w-6" />, href: "/dashboard/orders", color: "bg-light-lavender" },
+  ]
 
   return (
     <div className="min-h-screen bg-navy p-4 md:p-6">
@@ -130,36 +168,37 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0">
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${order.type === 'SMS' ? 'bg-primary-blue/20' : 'bg-mint-green/20'}`}>
-                        {order.type === 'SMS' ? (
-                          <MessageSquare className="h-4 w-4 text-primary-blue" />
-                        ) : (
-                          <Users className="h-4 w-4 text-mint-green" />
-                        )}
+              {data?.recentOrders && data.recentOrders.length > 0 ? (
+                <div className="space-y-3">
+                  {data.recentOrders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${order.type === 'sms' ? 'bg-primary-blue/20' : 'bg-mint-green/20'}`}>
+                          {order.type === 'sms' ? (
+                            <MessageSquare className="h-4 w-4 text-primary-blue" />
+                          ) : (
+                            <Users className="h-4 w-4 text-mint-green" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-white text-sm font-medium capitalize">{order.type}</p>
+                          <p className="text-light-lavender text-xs">
+                            {order.type === 'sms' && order.serviceName 
+                              ? `${order.serviceName}${order.country ? ` - ${order.country}` : ''}`
+                              : new Date(order.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">{order.type === 'SMS' ? order.service : order.platform}</p>
-                        <p className="text-light-lavender text-xs">{order.date}</p>
+                      <div className="text-right">
+                        <p className="text-white text-sm font-medium">₦{order.amount}</p>
+                        <Badge className={statusColors[order.status] || "bg-gray-500/20 text-gray-400"}>
+                          {order.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white text-sm font-medium">{order.amount}</p>
-                      <Badge 
-                        variant={order.status === 'completed' ? 'success' : 'warning'}
-                        className="text-xs"
-                      >
-                        {order.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {recentOrders.length === 0 && (
+                  ))}
+                </div>
+              ) : (
                 <div className="text-center py-8">
                   <FileText className="h-12 w-12 text-light-lavender/30 mx-auto mb-3" />
                   <p className="text-light-lavender text-sm">No orders yet</p>
@@ -182,17 +221,22 @@ export default function DashboardPage() {
               <CardDescription className="text-light-lavender text-xs">Most ordered services</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6 pt-0">
-              <div className="space-y-3">
-                {services.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                    <div>
-                      <p className="text-white text-sm font-medium">{service.name}</p>
-                      <p className="text-light-lavender text-xs">{service.orders} orders</p>
+              {data?.services && data.services.length > 0 ? (
+                <div className="space-y-3">
+                  {data.services.map((service, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div>
+                        <p className="text-white text-sm font-medium capitalize">{service.name}</p>
+                        <p className="text-light-lavender text-xs">{service.count} countries</p>
+                      </div>
                     </div>
-                    <div className="text-mint-green text-sm font-medium">{service.price}</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-light-lavender text-sm">No services configured yet</p>
+                </div>
+              )}
               
               <Link href="/dashboard/sms/order" className="block mt-4">
                 <Button className="w-full bg-primary-blue text-white hover:bg-primary-blue/80 text-sm">
@@ -231,7 +275,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-white font-semibold">Member Since</h3>
-                <p className="text-light-lavender text-sm">April 2026</p>
+                <p className="text-light-lavender text-sm">{session?.user?.email ? "April 2026" : "Not logged in"}</p>
               </div>
             </div>
             <p className="text-light-lavender text-xs">
