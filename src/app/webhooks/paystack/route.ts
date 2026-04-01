@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
+import { getSMSPool } from "@/lib/smspool"
 
 export async function POST(request: Request) {
   try {
@@ -44,14 +45,39 @@ export async function POST(request: Request) {
 
         // Process the order based on type
         if (order.type === "sms") {
-          const phoneNumber = "+234" + Math.floor(Math.random() * 900000000 + 100000000)
-          await prisma.sMSOrder.update({
+          const smsOrder = await prisma.sMSOrder.findUnique({
             where: { orderId: order.id },
-            data: {
-              phoneNumber,
-              expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-            }
           })
+
+          if (smsOrder) {
+            try {
+              const smspool = getSMSPool()
+              const result = await smspool.buyNumber(smsOrder.service, smsOrder.country)
+
+              if (result.success && result.phoneNumber && result.orderId) {
+                await prisma.sMSOrder.update({
+                  where: { orderId: order.id },
+                  data: {
+                    phoneNumber: result.phoneNumber,
+                    supplierOrderId: result.orderId,
+                    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+                  }
+                })
+              } else {
+                console.error("SMSPool failed to get number:", result.message)
+                await prisma.order.update({
+                  where: { id: order.id },
+                  data: { status: "failed" },
+                })
+              }
+            } catch (error) {
+              console.error("Error fetching phone from SMSPool:", error)
+              await prisma.order.update({
+                where: { id: order.id },
+                data: { status: "failed" },
+              })
+            }
+          }
         } else if (order.type === "log") {
           const logOrder = await prisma.logOrder.findUnique({
             where: { orderId: order.id },
