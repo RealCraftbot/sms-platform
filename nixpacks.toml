@@ -1,5 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm-10_x", "openssl", "libssl"]
+nixPkgs = ["nodejs_20", "npm-10_x"]
+
+[phases.install]
+nixPkgs = ["openssl"]
 
 [phases.build]
-nixPkgs = ["openssl", "libssl"]
+nixPkgs = ["openssl", "pkg-config"]
+
+[start]
+runtime = ["openssl"]

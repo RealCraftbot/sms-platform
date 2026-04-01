@@ -36,46 +36,54 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 py-20">
+      <Card className="w-full max-w-md bg-navy border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-white text-2xl">Login</CardTitle>
+          <CardDescription className="text-light-lavender">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+              <div className="p-3 text-sm text-red-400 bg-red-500/20 border border-red-500/30 rounded-md">
                 {error}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-white">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-mint-green text-navy hover:bg-mint-green/80" 
+              disabled={loading}
+            >
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm">
+          <p className="mt-4 text-center text-sm text-light-lavender">
             Don't have an account?{" "}
-            <Link href="/register" className="text-primary hover:underline">
+            <Link href="/register" className="text-mint-green hover:underline">
               Register
             </Link>
           </p>
