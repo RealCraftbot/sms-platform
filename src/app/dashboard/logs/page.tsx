@@ -29,22 +29,22 @@ export default function LogsPage() {
   const router = useRouter()
   const [logs, setLogs] = useState<SocialLog[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [selectedCategory, setSelectedCategory] = useState("")
-  const [selectedPlatform, setSelectedPlatform] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedPlatform, setSelectedPlatform] = useState("all")
   const [selectedLogs, setSelectedLogs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [ordering, setOrdering] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams()
-    if (selectedCategory) params.append("categoryId", selectedCategory)
-    if (selectedPlatform) params.append("platform", selectedPlatform)
+    if (selectedCategory && selectedCategory !== "all") params.append("categoryId", selectedCategory)
+    if (selectedPlatform && selectedPlatform !== "all") params.append("platform", selectedPlatform)
 
     fetch(`/api/logs?${params}`)
       .then(res => res.json())
       .then(data => {
-        setLogs(data.logs)
-        setCategories(data.categories)
+        setLogs(data.logs || [])
+        setCategories(data.categories || [])
         setLoading(false)
       })
   }, [selectedCategory, selectedPlatform])
@@ -82,7 +82,7 @@ export default function LogsPage() {
       }
 
       router.push(`/dashboard/orders?order=${data.id}`)
-    } catch (err) {
+    } catch {
       alert("Something went wrong")
       setOrdering(false)
     }
@@ -105,7 +105,7 @@ export default function LogsPage() {
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map(cat => (
               <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
             ))}
@@ -116,7 +116,7 @@ export default function LogsPage() {
             <SelectValue placeholder="All Platforms" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Platforms</SelectItem>
+            <SelectItem value="all">All Platforms</SelectItem>
             <SelectItem value="Instagram">Instagram</SelectItem>
             <SelectItem value="Facebook">Facebook</SelectItem>
             <SelectItem value="Twitter">Twitter</SelectItem>

@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Loader2 } from "lucide-react"
 
 interface PricingRule {
   id: string
@@ -38,6 +40,7 @@ const COUNTRIES = [
 ]
 
 export default function PricingPage() {
+  const router = useRouter()
   const [rules, setRules] = useState<PricingRule[]>([])
   const [loading, setLoading] = useState(true)
   const [service, setService] = useState("")
@@ -46,24 +49,58 @@ export default function PricingPage() {
   const [markupType, setMarkupType] = useState("percentage")
   const [markupValue, setMarkupValue] = useState("")
   const [saving, setSaving] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    fetch("/api/admin/pricing")
-      .then(res => res.json())
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmail) {
+      router.push("/admin-login")
+      return
+    }
+
+    const headers: Record<string, string> = { "x-admin-id": adminId }
+    
+    fetch("/api/admin/pricing", { headers })
+      .then(res => {
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.push("/admin-login")
+            return []
+          }
+          throw new Error(`HTTP error: ${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
-        setRules(data)
+        setRules(Array.isArray(data) ? data : [])
         setLoading(false)
       })
-  }, [])
+      .catch(() => setLoading(false))
+  }, [mounted, router])
 
   const handleSave = async () => {
     if (!service || !country || !basePrice || !markupValue) return
     setSaving(true)
 
+    const adminId = localStorage.getItem("adminId")
+    const headers: Record<string, string> = { 
+      "Content-Type": "application/json",
+      "x-admin-id": adminId || ""
+    }
+
     try {
       const res = await fetch("/api/admin/pricing", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           service,
           country,
@@ -81,26 +118,28 @@ export default function PricingPage() {
         return
       }
 
-      // Refresh rules
-      const rulesRes = await fetch("/api/admin/pricing")
+      const rulesRes = await fetch("/api/admin/pricing", { headers: { "x-admin-id": adminId || "" } })
       const rulesData = await rulesRes.json()
       setRules(rulesData)
 
-      // Reset form
       setService("")
       setCountry("")
       setBasePrice("")
       setMarkupValue("")
       alert("Pricing rule saved!")
-    } catch (err) {
+    } catch {
       alert("Something went wrong")
     }
 
     setSaving(false)
   }
 
-  if (loading) {
-    return <div>Loading...</div>
+  if (!mounted || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
+      </div>
+    )
   }
 
   return (

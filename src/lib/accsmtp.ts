@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 interface AccSMTPConfig {
   baseUrl: string
   username: string

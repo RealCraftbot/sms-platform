@@ -16,8 +16,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle,
-  XCircle,
-  Clock,
   Loader2
 } from "lucide-react"
 
@@ -106,7 +104,7 @@ export default function DashboardPage() {
           Welcome back, {session?.user?.name || 'User'}! 👋
         </h1>
         <p className="text-light-lavender text-sm md:text-base mt-1">
-          Here's what's happening with your account today.
+          Here is what is happening with your account today.
         </p>
       </div>
 

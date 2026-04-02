@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils"
 
 const RadioGroup = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value?: string; onValueChange?: (value: string) => void }
->(({ className, value, onValueChange, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, MessageSquare, CreditCard, Wallet, Clock, ArrowRight } from "lucide-react"
+import { Shield, MessageSquare, CreditCard, Wallet, Clock } from "lucide-react"
 
 export default function AboutPage() {
   return (
@@ -31,7 +31,7 @@ export default function AboutPage() {
               <p className="text-light-lavender text-sm md:text-base">
                 Our mission is to provide fast, reliable, and affordable solutions for all your 
                 verification needs. Whether you need to verify a WhatsApp account, Instagram, 
-                or purchase aged social media accounts, we've got you covered.
+                or purchase aged social media accounts, we have got you covered.
               </p>
             </div>
             <div className="grid gap-4">

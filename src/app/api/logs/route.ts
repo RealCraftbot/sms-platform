@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 export async function GET(request: Request) {
   try {
@@ -10,14 +11,17 @@ export async function GET(request: Request) {
     const maxPrice = searchParams.get("maxPrice")
     const status = searchParams.get("status") || "available"
 
-    const where: any = {
+    const where: Prisma.SocialLogWhereInput = {
       status,
     }
 
     if (platform) where.platform = platform
     if (categoryId) where.categoryId = categoryId
-    if (minPrice) where.price = { ...where.price, gte: parseFloat(minPrice) }
-    if (maxPrice) where.price = { ...where.price, lte: parseFloat(maxPrice) }
+    if (minPrice || maxPrice) {
+      where.price = {}
+      if (minPrice) where.price.gte = parseFloat(minPrice)
+      if (maxPrice) where.price.lte = parseFloat(maxPrice)
+    }
 
     const logs = await prisma.socialLog.findMany({
       where,

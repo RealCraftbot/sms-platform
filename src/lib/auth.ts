@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          isAdmin: false,
+          isAdmin: user.email === "admin@smsreseller.com",
         }
       }
     })
@@ -68,7 +68,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.isAdmin = (user as any).isAdmin
+        token.isAdmin = (user as { isAdmin?: boolean }).isAdmin
       }
       return token
     },

@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
       localStorage.setItem("adminRole", data.role || "admin")
       
       router.push("/admin")
-    } catch (err) {
+    } catch {
       setError("Something went wrong")
       setLoading(false)
     }

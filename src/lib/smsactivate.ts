@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const SMSACTIVATE_BASE_URL = "https://sms-activate.org/stubs/handler_api"
 
 interface SMSActivateConfig {

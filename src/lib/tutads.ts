@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const TUTADS_BASE_URL = "https://tutads.net/api"
 
 interface TutAdsConfig {
@@ -214,21 +215,21 @@ export class TutAds {
     return []
   }
 
-  async buyNumber(service: string, country: string): Promise<SMSResult> {
+  async buyNumber(): Promise<SMSResult> {
     return {
       success: false,
       message: "TutAds is primarily for social accounts. Use buyProduct method instead.",
     }
   }
 
-  async getSms(orderId: string): Promise<SMSCheckResult> {
+  async getSms(): Promise<SMSCheckResult> {
     return {
       success: false,
       message: "TutAds does not support SMS verification.",
     }
   }
 
-  async cancelOrder(orderId: string): Promise<{ success: boolean; message?: string }> {
+  async cancelOrder(): Promise<{ success: boolean; message?: string }> {
     return {
       success: false,
       message: "TutAds does not support order cancellation via API.",

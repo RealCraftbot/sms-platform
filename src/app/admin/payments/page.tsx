@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Loader2 } from "lucide-react"
 
 interface PendingPayment {
   id: string
@@ -28,27 +27,61 @@ interface PendingPayment {
 }
 
 export default function PaymentsPage() {
+  const router = useRouter()
   const [payments, setPayments] = useState<PendingPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState<string | null>(null)
   const [reviewNotes, setReviewNotes] = useState("")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    fetch("/api/admin/payments/pending")
-      .then(res => res.json())
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmail) {
+      router.push("/admin-login")
+      return
+    }
+
+    const headers: Record<string, string> = { "x-admin-id": adminId }
+    
+    fetch("/api/admin/payments/pending", { headers })
+      .then(res => {
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.push("/admin-login")
+            return []
+          }
+          throw new Error(`HTTP error: ${res.status}`)
+        }
+        return res.json()
+      })
       .then(data => {
-        setPayments(data)
+        setPayments(Array.isArray(data) ? data : [])
         setLoading(false)
       })
-  }, [])
+      .catch(() => setLoading(false))
+  }, [mounted, router])
 
   const handleReview = async (id: string, action: "approve" | "reject") => {
     setReviewing(id)
+    const adminId = localStorage.getItem("adminId")
+    const headers: Record<string, string> = { 
+      "Content-Type": "application/json",
+      "x-admin-id": adminId || ""
+    }
 
     try {
       const res = await fetch(`/api/admin/payments/${id}/review`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ action, reviewNotes }),
       })
 
@@ -59,22 +92,27 @@ export default function PaymentsPage() {
         return
       }
 
-      // Refresh payments
-      const paymentsRes = await fetch("/api/admin/payments/pending")
-      const paymentsData = await paymentsRes.json()
-      setPayments(paymentsData)
+      const paymentsRes = await fetch("/api/admin/payments/pending", { headers: { "x-admin-id": adminId || "" } })
+      if (paymentsRes.ok) {
+        const paymentsData = await paymentsRes.json()
+        setPayments(Array.isArray(paymentsData) ? paymentsData : [])
+      }
 
       alert(`Payment ${action}d!`)
       setReviewNotes("")
-    } catch (err) {
+    } catch {
       alert("Something went wrong")
     }
 
     setReviewing(null)
   }
 
-  if (loading) {
-    return <div>Loading...</div>
+  if (!mounted || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
+      </div>
+    )
   }
 
   return (

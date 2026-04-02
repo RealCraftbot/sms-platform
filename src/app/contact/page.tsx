@@ -32,7 +32,7 @@ export default function ContactPage() {
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 md:mb-4">Contact Us</h1>
           <p className="text-light-lavender text-base md:text-xl max-w-2xl mx-auto">
-            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            Have questions? We would love to hear from you. Send us a message and we will respond as soon as possible.
           </p>
         </div>
 
@@ -87,7 +87,7 @@ export default function ContactPage() {
               <CardHeader className="p-4 md:p-6">
                 <CardTitle className="text-white text-lg">Send us a Message</CardTitle>
                 <p className="text-light-lavender text-xs md:text-sm">
-                  Fill out the form below and we'll get back to you
+                  Fill out the form below and we will get back to you
                 </p>
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0">

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const reference = `TX-${Date.now()}-${Math.random().toString(36).substring(7)}`
 
-    const transaction = await prisma.transaction.create({
+    await prisma.transaction.create({
       data: {
         orderId: order.id,
         userId: user.id,

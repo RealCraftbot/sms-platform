@@ -1,26 +1,14 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { checkAdminAuth } from "@/lib/admin-auth"
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!adminUser || adminUser.email !== "admin@smsreseller.com") {
-      return NextResponse.json({ error: "Admin only" }, { status: 403 })
-    }
+    const { authorized, response, admin } = await checkAdminAuth(request)
+    if (!authorized || !admin) return response
 
     const { id } = await params
     const body = await request.json()
@@ -48,7 +36,7 @@ export async function POST(
       where: { id },
       data: {
         status: newStatus,
-        reviewedBy: adminUser.id,
+        reviewedBy: admin.id,
         reviewedAt: new Date(),
         reviewNotes,
       },

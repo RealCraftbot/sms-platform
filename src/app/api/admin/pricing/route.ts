@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { checkAdminAuth } from "@/lib/admin-auth"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!adminUser || adminUser.email !== "admin@smsreseller.com") {
-      return NextResponse.json({ error: "Admin only" }, { status: 403 })
-    }
+    const { authorized, response } = await checkAdminAuth(request)
+    if (!authorized) return response
 
     const rules = await prisma.pricingRule.findMany({
       orderBy: { service: "asc" },
@@ -35,19 +23,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!adminUser || adminUser.email !== "admin@smsreseller.com") {
-      return NextResponse.json({ error: "Admin only" }, { status: 403 })
-    }
+    const { authorized, response } = await checkAdminAuth(request)
+    if (!authorized) return response
 
     const body = await request.json()
     const { service, country, basePrice, markupType, markupValue } = body

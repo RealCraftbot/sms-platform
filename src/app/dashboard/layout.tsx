@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
-import { Shield, LayoutDashboard, MessageSquare, FileText, Wallet, CreditCard, Settings, LogOut, ChevronRight } from "lucide-react"
+import { Shield, LayoutDashboard, MessageSquare, FileText, Wallet, CreditCard, Settings, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const userNavItems = [

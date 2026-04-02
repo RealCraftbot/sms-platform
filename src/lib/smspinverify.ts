@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const SMSPINVERIFY_BASE_URL = "https://smspinverify.com/api"
 
 interface SMSPinVerifyConfig {

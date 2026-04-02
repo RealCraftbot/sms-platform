@@ -61,8 +61,8 @@ export async function GET() {
         id: string
         service: string
         country: string
-        basePrice: any
-        finalPrice: any
+        basePrice: number | { toNumber: () => number }
+        finalPrice: number | { toNumber: () => number }
         isActive: boolean
       }
       

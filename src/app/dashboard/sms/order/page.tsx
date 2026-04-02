@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -32,7 +33,8 @@ export default function SMSOrderPage() {
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [ordering, setOrdering] = useState(false)
-  const [supplier, setSupplier] = useState<string>("")
+  const [serviceSearch, setServiceSearch] = useState("")
+  const [countrySearch, setCountrySearch] = useState("")
   const [error, setError] = useState<string>("")
 
   useEffect(() => {
@@ -42,21 +44,29 @@ export default function SMSOrderPage() {
     ]).then(([servicesData, balanceData]) => {
       if (servicesData.services) {
         setServices(servicesData.services)
-        setSupplier(servicesData.supplier || "smspool")
         if (servicesData.message) {
           console.log(servicesData.message)
         }
       }
       setBalance(parseFloat(balanceData.balance) || 0)
       setLoading(false)
-    }).catch(err => {
-      console.error("Error loading data:", err)
+    }).catch(() => {
       setError("Failed to load services")
       setLoading(false)
     })
   }, [])
 
+  const filteredServices = serviceSearch.trim() === "" 
+    ? services 
+    : services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+
   const selectedServiceData = services.find(s => s.id === selectedService)
+  const filteredCountries = selectedServiceData 
+    ? (countrySearch.trim() === "" 
+        ? selectedServiceData.countries 
+        : selectedServiceData.countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())))
+    : []
+
   const selectedCountryData = selectedServiceData?.countries.find(c => c.id === selectedCountry)
   const orderPrice = selectedCountryData?.price || 0
   const hasSufficientFunds = balance >= orderPrice
@@ -96,7 +106,7 @@ export default function SMSOrderPage() {
 
       alert("Order placed successfully!")
       router.push("/dashboard/orders")
-    } catch (err) {
+    } catch {
       setError("Something went wrong")
       setOrdering(false)
     }
@@ -115,11 +125,6 @@ export default function SMSOrderPage() {
       <div>
         <h1 className="text-3xl font-bold text-white">Order SMS Verification</h1>
         <p className="text-light-lavender">Get a temporary phone number for OTP verification</p>
-        {supplier && (
-          <Badge variant="outline" className="mt-2 text-mint-green border-mint-green">
-            Supplier: {supplier.toUpperCase()}
-          </Badge>
-        )}
       </div>
 
       <Card className="bg-navy/50 border-light-lavender/20">
@@ -155,12 +160,18 @@ export default function SMSOrderPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-white">Service</Label>
-              <Select value={selectedService} onValueChange={setSelectedService}>
+              <Input
+                placeholder="Search services..."
+                value={serviceSearch}
+                onChange={(e) => setServiceSearch(e.target.value)}
+                className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
+              />
+              <Select value={selectedService} onValueChange={(v) => { setSelectedService(v); setCountrySearch("") }}>
                 <SelectTrigger className="bg-white/10 border-light-lavender/30 text-white">
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map(service => (
+                  {filteredServices.map(service => (
                     <SelectItem key={service.id} value={service.id}>
                       {service.name}
                     </SelectItem>
@@ -170,6 +181,13 @@ export default function SMSOrderPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-white">Country</Label>
+              <Input
+                placeholder="Search countries..."
+                value={countrySearch}
+                onChange={(e) => setCountrySearch(e.target.value)}
+                disabled={!selectedService}
+                className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
+              />
               <Select 
                 value={selectedCountry} 
                 onValueChange={setSelectedCountry}
@@ -179,7 +197,7 @@ export default function SMSOrderPage() {
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedServiceData?.countries.map(country => (
+                  {filteredCountries.map(country => (
                     <SelectItem key={country.id} value={country.id}>
                       {country.name} {country.price ? `₦${country.price}` : "(not configured)"}
                     </SelectItem>

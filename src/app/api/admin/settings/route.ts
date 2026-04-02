@@ -1,27 +1,15 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { checkAdminAuth } from "@/lib/admin-auth"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const admin = await prisma.admin.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!admin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { authorized, response } = await checkAdminAuth(request)
+    if (!authorized) return response
 
     const settings = await prisma.setting.findMany()
     const settingsMap: Record<string, string> = {}
-    settings.forEach(s => {
+    settings.forEach((s: { key: string; value: string }) => {
       settingsMap[s.key] = s.value
     })
 
@@ -34,25 +22,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const admin = await prisma.admin.findUnique({
-      where: { email: session.user.email! },
-    })
-
-    if (!admin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { authorized, response } = await checkAdminAuth(request)
+    if (!authorized) return response
 
     const body = await request.json()
     const { smsSupplier, socialSupplier } = body
 
-    const validSMSSuppliers = ["smspool", "smspinverify", "smsactivate", "acctshop", "tutads"]
-    const validSocialSuppliers = ["tutads", "accsmtp"]
+    const validSMSSuppliers = ["smspool", "smspinverify", "smsactivate"]
+    const validSocialSuppliers = ["acctshop", "tutads"]
 
     if (smsSupplier && !validSMSSuppliers.includes(smsSupplier)) {
       return NextResponse.json({ error: "Invalid SMS supplier" }, { status: 400 })

@@ -52,8 +52,6 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    // In a real app, you'd verify the session/token here
-    // For now, we'll check if there's an admin session header
     const adminId = request.headers.get("x-admin-id")
     
     if (!adminId) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 interface SMSService {
   id: string
@@ -37,30 +38,34 @@ export default function AdminServicesPage() {
   const [data, setData] = useState<ServicesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"sms" | "social">("sms")
+  const [mounted, setMounted] = useState(() => typeof window !== "undefined")
 
   useEffect(() => {
-    const adminId = typeof window !== 'undefined' ? localStorage.getItem("adminId") : null
+    setMounted(true)
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
     
-    if (!adminId) {
+    if (!adminId || !adminEmail) {
       router.push("/admin-login")
       return
     }
     
     setIsAdmin(true)
     
-    const fetchServices = async () => {
-      const adminId = localStorage.getItem("adminId")
-      const headers: Record<string, string> = {}
-      if (adminId) {
-        headers["x-admin-id"] = adminId
-      }
+    const headers: Record<string, string> = { "x-admin-id": adminId }
 
+    const fetchServices = async () => {
       try {
         const res = await fetch("/api/admin/services", { headers })
-        if (res.ok) {
-          const json = await res.json()
-          setData(json)
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            router.push("/admin-login")
+            return
+          }
+          throw new Error(`HTTP error: ${res.status}`)
         }
+        const json = await res.json()
+        setData(json)
       } catch (error) {
         console.error("Failed to fetch services:", error)
       } finally {
@@ -71,10 +76,10 @@ export default function AdminServicesPage() {
     fetchServices()
   }, [router])
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
       </div>
     )
   }
@@ -87,7 +92,6 @@ export default function AdminServicesPage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">Services & Products</h1>
 
-      {/* Tabs */}
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setActiveTab("sms")}
@@ -123,7 +127,6 @@ export default function AdminServicesPage() {
         </div>
       )}
 
-      {/* SMS Services Tab */}
       {activeTab === "sms" && data?.sms && (
         <div>
           <div className="bg-white shadow rounded-lg p-4 mb-6">
@@ -161,7 +164,6 @@ export default function AdminServicesPage() {
         </div>
       )}
 
-      {/* Social Products Tab */}
       {activeTab === "social" && data?.social && (
         <div>
           <div className="bg-white shadow rounded-lg p-4 mb-6">

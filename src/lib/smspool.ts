@@ -68,13 +68,16 @@ export class SMSPool {
 
   async getServices(): Promise<ServiceInfo[]> {
     try {
-      const result = await this.post<any>("/service/retrieve_all", {})
-      const services = result.services || result || []
+      const result = await this.post<Record<string, unknown>>("/service/retrieve_all", {})
+      const services = (result.services || result) as unknown[]
       if (Array.isArray(services)) {
-        return services.map((s: any) => ({
-          id: String(s.id || s.service_id || s),
-          name: s.name || s.service_name || s,
-        }))
+        return services.map((s) => {
+          const service = s as Record<string, unknown>
+          return {
+            id: String(service.id || service.service_id || s),
+            name: String(service.name || service.service_name || s),
+          }
+        })
       }
       return []
     } catch (error) {
@@ -85,14 +88,17 @@ export class SMSPool {
 
   async getCountries(): Promise<CountryInfo[]> {
     try {
-      const result = await this.post<any>("/country/retrieve_all", {})
-      const countries = result.countries || result || []
+      const result = await this.post<Record<string, unknown>>("/country/retrieve_all", {})
+      const countries = (result.countries || result) as unknown[]
       if (Array.isArray(countries)) {
-        return countries.map((c: any) => ({
-          id: String(c.id || c.code || c),
-          name: c.name || c.country || c,
-          code: c.code || c.iso,
-        }))
+        return countries.map((c) => {
+          const country = c as Record<string, unknown>
+          return {
+            id: String(country.id || country.code || c),
+            name: String(country.name || country.country || c),
+            code: String(country.code || country.iso || ""),
+          }
+        })
       }
       return []
     } catch (error) {
@@ -103,8 +109,8 @@ export class SMSPool {
 
   async getPools(): Promise<PoolInfo[]> {
     try {
-      const result = await this.post<any>("/pool/retrieve_all", {})
-      return result.pools || result || []
+      const result = await this.post<Record<string, unknown>>("/pool/retrieve_all", {})
+      return (result.pools || result || []) as PoolInfo[]
     } catch (error) {
       console.error("SMSPool getPools error:", error)
       return []
@@ -121,10 +127,10 @@ export class SMSPool {
     }
   }
 
-  async getPricing(): Promise<any[]> {
+  async getPricing(): Promise<unknown[]> {
     try {
-      const result = await this.post<any>("/request/pricing", {})
-      return result.pricing || result || []
+      const result = await this.post<Record<string, unknown>>("/request/pricing", {})
+      return (result.pricing || result || []) as unknown[]
     } catch (error) {
       console.error("SMSPool getPricing error:", error)
       return []
@@ -135,10 +141,10 @@ export class SMSPool {
     try {
       const data: Record<string, string | number | undefined> = { country, service }
       if (pool) data.pool = pool
-      const result = await this.post<any>("/request/price", data)
+      const result = await this.post<Record<string, unknown>>("/request/price", data)
       return {
-        price: parseFloat(result.price || 0),
-        success_rate: parseFloat(result.success_rate || 0),
+        price: parseFloat(String(result.price || 0)),
+        success_rate: parseFloat(String(result.success_rate || 0)),
       }
     } catch (error) {
       console.error("SMSPool getPrice error:", error)
@@ -162,51 +168,53 @@ export class SMSPool {
       if (options?.pricing_option) data.pricing_option = options.pricing_option
       if (options?.quantity) data.quantity = options.quantity
 
-      const result = await this.post<any>("/purchase/sms", data)
+      const result = await this.post<Record<string, unknown>>("/purchase/sms", data)
 
       if (result.success === 1 || result.success === true || result.orderid || result.phonenumber) {
         return {
           success: true,
-          orderId: result.orderid || result.order_id,
-          phoneNumber: result.phonenumber || result.phone || result.number,
-          message: result.message,
+          orderId: String(result.orderid || result.order_id || ""),
+          phoneNumber: String(result.phonenumber || result.phone || result.number || ""),
+          message: String(result.message || ""),
         }
       }
 
       return {
         success: false,
-        message: result.message || result.error || "Failed to purchase number",
+        message: String(result.message || result.error || "Failed to purchase number"),
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("SMSPool buyNumber error:", error)
+      const err = error as Error
       return {
         success: false,
-        message: error.message || "Failed to purchase number",
+        message: err?.message || "Failed to purchase number",
       }
     }
   }
 
   async getSms(orderId: string): Promise<SMSCheckResult> {
     try {
-      const result = await this.post<any>("/sms/check", { orderid: orderId })
+      const result = await this.post<Record<string, unknown>>("/sms/check", { orderid: orderId })
 
       if (result.success === 1 || result.code || result.sms) {
         return {
           success: true,
-          code: result.code || result.sms,
-          sms: result.sms || result.full_code,
+          code: String(result.code || result.sms || ""),
+          sms: String(result.sms || result.full_code || ""),
         }
       }
 
       return {
         success: false,
-        message: result.message || "SMS not received yet",
+        message: String(result.message || "SMS not received yet"),
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("SMSPool getSms error:", error)
+      const err = error as Error
       return {
         success: false,
-        message: error.message || "Failed to check SMS",
+        message: err?.message || "Failed to check SMS",
       }
     }
   }
@@ -218,29 +226,30 @@ export class SMSPool {
         success: result.success === 1,
         message: result.message,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("SMSPool cancelOrder error:", error)
+      const err = error as Error
       return {
         success: false,
-        message: error.message,
+        message: err?.message,
       }
     }
   }
 
-  async getActiveOrders(): Promise<any[]> {
+  async getActiveOrders(): Promise<unknown[]> {
     try {
-      const result = await this.post<any>("/request/active", {})
-      return result.orders || result || []
+      const result = await this.post<Record<string, unknown>>("/request/active", {})
+      return (result.orders || result || []) as unknown[]
     } catch (error) {
       console.error("SMSPool getActiveOrders error:", error)
       return []
     }
   }
 
-  async getOrderHistory(start: number = 0, length: number = 100): Promise<any[]> {
+  async getOrderHistory(start: number = 0, length: number = 100): Promise<unknown[]> {
     try {
-      const result = await this.post<any>("/request/history", { start, length })
-      return result.orders || result || []
+      const result = await this.post<Record<string, unknown>>("/request/history", { start, length })
+      return (result.orders || result || []) as unknown[]
     } catch (error) {
       console.error("SMSPool getOrderHistory error:", error)
       return []
@@ -249,16 +258,17 @@ export class SMSPool {
 
   async resendSms(orderId: string): Promise<{ success: boolean; message?: string }> {
     try {
-      const result = await this.post<any>("/sms/resend", { orderid: orderId })
+      const result = await this.post<{ success: number; message?: string }>("/sms/resend", { orderid: orderId })
       return {
         success: result.success === 1,
         message: result.message,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("SMSPool resendSms error:", error)
+      const err = error as Error
       return {
         success: false,
-        message: error.message,
+        message: err?.message,
       }
     }
   }

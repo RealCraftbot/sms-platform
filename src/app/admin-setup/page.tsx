@@ -58,7 +58,7 @@ export default function AdminSetupPage() {
       }
 
       router.push("/admin-login")
-    } catch (err) {
+    } catch {
       setError("Something went wrong")
       setSubmitting(false)
     }

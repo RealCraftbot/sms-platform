@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 
 export default function WalletPage() {
@@ -83,7 +82,7 @@ export default function WalletPage() {
 
       alert("Payment submitted! Please wait for admin approval.")
       router.push("/dashboard/orders")
-    } catch (err) {
+    } catch {
       alert("Something went wrong")
       setUploading(false)
     }

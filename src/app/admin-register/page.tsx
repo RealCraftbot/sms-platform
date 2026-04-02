@@ -74,7 +74,7 @@ export default function AdminRegisterPage() {
       }
 
       router.push("/admin-login?registered=true")
-    } catch (err) {
+    } catch {
       setError("Something went wrong")
       setLoading(false)
     }

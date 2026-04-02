@@ -24,7 +24,6 @@ export async function POST(request: Request) {
 
     if (event.event === "charge.success") {
       const reference = event.data.reference
-      const amount = event.data.amount / 100
 
       const transaction = await prisma.transaction.findFirst({
         where: { reference },

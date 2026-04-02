@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loader2 } from "lucide-react"
 
 interface SMSService {
   id: string
@@ -39,11 +40,14 @@ export default function AdminDashboardPage() {
   const [socialSupplier, setSocialSupplier] = useState("tutads")
   const [smsBalance, setSmsBalance] = useState<number | null>(null)
   const [socialBalance, setSocialBalance] = useState<number | null>(null)
+  const [mounted, setMounted] = useState(() => typeof window !== "undefined")
 
   useEffect(() => {
-    const adminId = typeof window !== 'undefined' ? localStorage.getItem("adminId") : null
+    setMounted(true)
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
     
-    if (!adminId) {
+    if (!adminId || !adminEmail) {
       router.push("/admin-login")
       return
     }
@@ -51,12 +55,8 @@ export default function AdminDashboardPage() {
     setIsAdmin(true)
     
     const fetchData = async () => {
-      const adminId = localStorage.getItem("adminId")
-      const headers: Record<string, string> = {}
-      if (adminId) {
-        headers["x-admin-id"] = adminId
-      }
-
+      const headers: Record<string, string> = { "x-admin-id": adminId }
+      
       try {
         const [statsRes, servicesRes] = await Promise.all([
           fetch("/api/admin/stats", { headers }),
@@ -87,10 +87,10 @@ export default function AdminDashboardPage() {
     fetchData()
   }, [router])
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-lg">Loading...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
       </div>
     )
   }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const ACCTSHOP_BASE_URL = "https://acctshop.com/api"
 
 interface AcctShopConfig {

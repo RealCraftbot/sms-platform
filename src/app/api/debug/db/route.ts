@@ -163,15 +163,16 @@ export async function GET() {
     `.catch(() => {})
 
     // Check tables now
-    const tables = await prisma.$queryRaw<any[]>`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+    const tables = await prisma.$queryRaw<{ table_name: string }[]>`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
 
     return NextResponse.json({ 
       success: true,
       tables: tables.map(t => t.table_name)
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error
     return NextResponse.json({ 
-      error: error.message 
+      error: err?.message || "Unknown error" 
     }, { status: 500 })
   }
 }

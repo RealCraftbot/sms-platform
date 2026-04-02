@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
@@ -126,7 +126,7 @@ export default function LoginPage() {
             
             <div className="mt-4 text-center">
               <p className="text-light-lavender text-sm">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link href="/register" className="text-mint-green font-semibold hover:underline">
                   Create Account
                 </Link>

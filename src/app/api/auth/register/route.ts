@@ -40,12 +40,11 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration error:", error)
-    // Log stack trace for debugging
-    console.error(error.stack)
+    const err = error as Error
     return NextResponse.json(
-      { error: error.message || "Internal server error", stack: error.stack },
+      { error: err?.message || "Internal server error" },
       { status: 500 }
     )
   }

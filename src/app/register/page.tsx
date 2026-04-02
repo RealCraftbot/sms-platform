@@ -75,7 +75,7 @@ export default function RegisterPage() {
       }
 
       router.push("/login?registered=true")
-    } catch (err) {
+    } catch {
       setError("Something went wrong")
       setLoading(false)
     }
@@ -86,7 +86,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-light-lavender mt-2">Join us today - it's free!</p>
+          <p className="text-light-lavender mt-2">Join us today - it is free!</p>
         </div>
         
         <Card className="bg-navy/80 border-light-lavender/20 backdrop-blur">

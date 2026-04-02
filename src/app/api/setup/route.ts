@@ -24,11 +24,12 @@ export async function GET() {
       message: "Payment methods initialized",
       paymentMethods: await prisma.paymentMethod.findMany()
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Setup error:", error)
+    const err = error as Error
     return NextResponse.json({ 
       status: "error", 
-      error: error.message 
+      error: err?.message || "Unknown error" 
     }, { status: 500 })
   }
 }

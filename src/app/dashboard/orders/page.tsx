@@ -79,7 +79,7 @@ export default function OrdersPage() {
       if (!data.success && data.message) {
         alert(data.message)
       }
-    } catch (err) {
+    } catch {
       alert("Failed to check SMS")
     } finally {
       setCheckingId(null)
@@ -146,7 +146,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell>₦{order.amount}</TableCell>
                   <TableCell>
-                    <Badge variant={statusColors[order.status] as any}>{order.status}</Badge>
+                    <Badge variant={(statusColors[order.status] || "secondary") as "default" | "secondary" | "destructive" | "outline" | "success"}>{order.status}</Badge>
                   </TableCell>
                   <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>

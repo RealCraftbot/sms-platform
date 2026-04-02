@@ -6,7 +6,7 @@ import { getTutAds } from "./tutads"
 import { getAccSMTP } from "./accsmtp"
 
 export type Supplier = "smspool" | "smspinverify" | "smsactivate" | "acctshop" | "tutads"
-export type SocialSupplierType = "tutads" | "accsmtp"
+export type SocialSupplierType = "tutads" | "accsmtp" | "acctshop"
 
 export interface SMSResult {
   success: boolean
@@ -43,10 +43,10 @@ export interface SMSSupplier {
 }
 
 export interface SocialSupplier {
-  getProducts(): Promise<{ categories: any[]; products: any[] }>
-  getProduct?(productId: number): Promise<any>
+  getProducts(): Promise<{ categories: unknown[]; products: unknown[] }>
+  getProduct?(productId: number): Promise<unknown>
   buyProduct(productId: number, amount: number): Promise<{ success: boolean; accounts?: string[]; message?: string }>
-  getOrder?(orderId: string): Promise<any>
+  getOrder?(orderId: string): Promise<unknown>
   getBalance(): Promise<number>
 }
 
@@ -73,6 +73,8 @@ export function getSocialSupplier(type: SocialSupplierType): SocialSupplier {
       return getTutAds() as unknown as SocialSupplier
     case "accsmtp":
       return getAccSMTP() as unknown as SocialSupplier
+    case "acctshop":
+      return getAcctShop() as unknown as SocialSupplier
     default:
       return getTutAds() as unknown as SocialSupplier
   }

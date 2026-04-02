@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { ExternalLink, ShoppingCart, Globe, Server } from "lucide-react"
+import { ExternalLink, ShoppingCart, Globe, Server, Loader2 } from "lucide-react"
 
 const smsSuppliersList = [
   { id: "smspool", name: "SMSPool", description: "SMS & Verification" },
@@ -28,13 +29,26 @@ const externalServices = [
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [currentSmsSupplier, setCurrentSmsSupplier] = useState("smspool")
   const [currentSocialSupplier, setCurrentSocialSupplier] = useState("acctshop")
+  const [mounted, setMounted] = useState(() => typeof window !== "undefined")
 
   useEffect(() => {
-    fetch("/api/admin/settings")
+    setMounted(true)
+    const adminId = localStorage.getItem("adminId")
+    const adminEmail = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmail) {
+      router.push("/admin-login")
+      return
+    }
+
+    const headers: Record<string, string> = { "x-admin-id": adminId }
+    
+    fetch("/api/admin/settings", { headers })
       .then(res => res.json())
       .then(data => {
         if (data.smsSupplier) setCurrentSmsSupplier(data.smsSupplier)
@@ -42,14 +56,20 @@ export default function SettingsPage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [router])
 
   const saveSettings = async () => {
     setSaving(true)
+    const adminId = localStorage.getItem("adminId")
+    const headers: Record<string, string> = { 
+      "Content-Type": "application/json",
+      "x-admin-id": adminId || ""
+    }
+    
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ 
           smsSupplier: currentSmsSupplier,
           socialSupplier: currentSocialSupplier
@@ -59,17 +79,22 @@ export default function SettingsPage() {
       if (res.ok) {
         alert("Settings saved successfully")
       } else {
-        alert("Failed to save settings")
+        const data = await res.json()
+        alert(data.error || "Failed to save settings")
       }
-    } catch (err) {
+    } catch {
       alert("Error saving settings")
     } finally {
       setSaving(false)
     }
   }
 
-  if (loading) {
-    return <div>Loading settings...</div>
+  if (!mounted || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
+      </div>
+    )
   }
 
   return (
@@ -137,8 +162,8 @@ export default function SettingsPage() {
           >
             {socialSuppliersList.map(supplier => (
               <div key={supplier.id} className="flex items-center space-x-4 p-4 border border-light-lavender/20 rounded-lg bg-white/5">
-                <RadioGroupItem value={supplier.id} id={supplier.id} className="border-light-lavender" />
-                <Label htmlFor={supplier.id} className="flex-1 cursor-pointer">
+                <RadioGroupItem value={supplier.id} id={`social-${supplier.id}`} className="border-light-lavender" />
+                <Label htmlFor={`social-${supplier.id}`} className="flex-1 cursor-pointer">
                   <span className="font-medium text-white">{supplier.name}</span>
                   <span className="text-light-lavender text-sm ml-2">- {supplier.description}</span>
                 </Label>

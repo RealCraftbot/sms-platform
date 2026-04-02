@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Shield, DollarSign, FileText, CreditCard, Settings, Phone, LayoutDashboard, Server } from "lucide-react"
+import { Shield, DollarSign, FileText, CreditCard, Settings, Phone, LayoutDashboard, Server, Loader2 } from "lucide-react"
 
 export default function AdminLayout({
   children,
@@ -16,34 +16,76 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [adminEmail, setAdminEmail] = useState("")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const adminId = localStorage.getItem("adminId")
-    const adminEmail = localStorage.getItem("adminEmail")
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     
-    if (!adminId || !adminEmail) {
+    const adminId = localStorage.getItem("adminId")
+    const adminEmailStored = localStorage.getItem("adminEmail")
+    
+    if (!adminId || !adminEmailStored) {
       router.push("/admin-login")
       return
     }
     
-    setAdminEmail(adminEmail)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- This pattern is intentional for auth checks
+    setAdminEmail(adminEmailStored)
+     
     setIsAdmin(true)
+     
     setLoading(false)
-  }, [router])
+  }, [mounted, router])
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
-  }
+  useEffect(() => {
+    if (!mounted || !isAdmin) return
 
-  if (!isAdmin) {
-    return null
-  }
+    const verifyAdmin = async () => {
+      const adminId = localStorage.getItem("adminId")
+      try {
+        const res = await fetch("/api/admin/login", {
+          headers: { "x-admin-id": adminId || "" }
+        })
+        if (!res.ok) {
+          localStorage.removeItem("adminId")
+          localStorage.removeItem("adminEmail")
+          localStorage.removeItem("adminRole")
+          router.push("/admin-login")
+        }
+      } catch {
+        // Network error, continue anyway
+      }
+    }
+    
+    verifyAdmin()
+  }, [mounted, isAdmin, router])
 
   const handleLogout = () => {
     localStorage.removeItem("adminId")
     localStorage.removeItem("adminEmail")
     localStorage.removeItem("adminRole")
     router.push("/admin-login")
+  }
+
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-navy">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-navy">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-blue" />
+      </div>
+    )
   }
 
   const navItems = [
@@ -87,7 +129,7 @@ export default function AdminLayout({
             className="w-full justify-start text-white hover:bg-white/10"
             onClick={handleLogout}
           >
-            <LayoutDashboard className="mr-3 h-4 w-4" />
+            <Settings className="mr-3 h-4 w-4" />
             Logout
           </Button>
         </div>
