@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface SMSService {
   id: string
@@ -40,23 +40,16 @@ export default function AdminDashboardPage() {
   const [smsBalance, setSmsBalance] = useState<number | null>(null)
   const [socialBalance, setSocialBalance] = useState<number | null>(null)
 
-  // Check admin authentication
   useEffect(() => {
-    const adminId = localStorage.getItem("adminId")
-    const adminEmail = localStorage.getItem("adminEmail")
+    const adminId = typeof window !== 'undefined' ? localStorage.getItem("adminId") : null
     
-    if (!adminId || !adminEmail) {
+    if (!adminId) {
       router.push("/admin-login")
       return
     }
     
     setIsAdmin(true)
-  }, [router])
-
-  // Fetch data
-  useEffect(() => {
-    if (!isAdmin) return
-
+    
     const fetchData = async () => {
       const adminId = localStorage.getItem("adminId")
       const headers: Record<string, string> = {}
@@ -92,7 +85,7 @@ export default function AdminDashboardPage() {
     }
 
     fetchData()
-  }, [isAdmin])
+  }, [router])
 
   if (loading) {
     return (
@@ -107,10 +100,10 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage your SMS & Social Media platform</p>
         </div>
         <div className="flex gap-2">
@@ -123,12 +116,11 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsers}</div>
@@ -136,7 +128,7 @@ export default function AdminDashboardPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalOrders}</div>
@@ -144,7 +136,7 @@ export default function AdminDashboardPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Payments</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.pendingPayments}</div>
@@ -152,7 +144,7 @@ export default function AdminDashboardPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Available Logs</CardTitle>
+              <CardTitle className="text-sm font-medium">Available Logs</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.availableLogs}</div>
@@ -161,7 +153,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Services & Products Tabs */}
       <Tabs defaultValue="sms" className="w-full">
         <TabsList>
           <TabsTrigger value="sms">SMS Services ({smsServices.length})</TabsTrigger>
@@ -189,7 +180,7 @@ export default function AdminDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">ID</TableHead>
+                      <TableHead>ID</TableHead>
                       <TableHead>Service Name</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -201,7 +192,7 @@ export default function AdminDashboardPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      smsServices.slice(0, 50).map((service, index) => (
+                      smsServices.slice(0, 100).map((service, index) => (
                         <TableRow key={service.id || index}>
                           <TableCell className="font-mono text-xs">{service.id}</TableCell>
                           <TableCell>{service.name}</TableCell>
@@ -211,11 +202,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
               </div>
-              {smsServices.length > 50 && (
-                <p className="text-sm text-muted-foreground text-center mt-2">
-                  Showing first 50 of {smsServices.length} services
-                </p>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -241,7 +227,7 @@ export default function AdminDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px]">ID</TableHead>
+                      <TableHead>ID</TableHead>
                       <TableHead>Product Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead className="text-right">Price</TableHead>
@@ -256,7 +242,7 @@ export default function AdminDashboardPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      socialProducts.slice(0, 50).map((product, index) => (
+                      socialProducts.slice(0, 100).map((product, index) => (
                         <TableRow key={product.id || index}>
                           <TableCell className="font-mono text-xs">{product.id}</TableCell>
                           <TableCell className="font-medium">{product.name}</TableCell>
@@ -273,11 +259,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
               </div>
-              {socialProducts.length > 50 && (
-                <p className="text-sm text-muted-foreground text-center mt-2">
-                  Showing first 50 of {socialProducts.length} products
-                </p>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

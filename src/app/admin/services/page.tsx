@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
 interface SMSService {
@@ -33,22 +32,31 @@ interface ServicesData {
 }
 
 export default function AdminServicesPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
   const [data, setData] = useState<ServicesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"sms" | "social">("sms")
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
+    const adminId = typeof window !== 'undefined' ? localStorage.getItem("adminId") : null
+    
+    if (!adminId) {
+      router.push("/admin-login")
+      return
     }
-  }, [status, router])
-
-  useEffect(() => {
+    
+    setIsAdmin(true)
+    
     const fetchServices = async () => {
+      const adminId = localStorage.getItem("adminId")
+      const headers: Record<string, string> = {}
+      if (adminId) {
+        headers["x-admin-id"] = adminId
+      }
+
       try {
-        const res = await fetch("/api/admin/services")
+        const res = await fetch("/api/admin/services", { headers })
         if (res.ok) {
           const json = await res.json()
           setData(json)
@@ -60,12 +68,10 @@ export default function AdminServicesPage() {
       }
     }
 
-    if (session?.user?.email === "admin@smsreseller.com") {
-      fetchServices()
-    }
-  }, [session])
+    fetchServices()
+  }, [router])
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div className="p-8">
         <div className="animate-pulse">Loading...</div>
@@ -73,12 +79,8 @@ export default function AdminServicesPage() {
     )
   }
 
-  if (session?.user?.email !== "admin@smsreseller.com") {
-    return (
-      <div className="p-8">
-        <div className="text-red-500">Access denied. Admin only.</div>
-      </div>
-    )
+  if (!isAdmin) {
+    return null
   }
 
   return (
@@ -138,12 +140,8 @@ export default function AdminServicesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service Name
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service Name</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -159,11 +157,6 @@ export default function AdminServicesPage() {
                 ))}
               </tbody>
             </table>
-            {data.sms.services?.length > 100 && (
-              <div className="bg-gray-50 px-6 py-3 text-sm text-gray-500">
-                Showing first 100 of {data.sms.services.length} services
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -185,39 +178,29 @@ export default function AdminServicesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stock
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {data.social.products?.map((product, index) => (
                   <tr key={product.id || index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {product.id}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                       {product.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {product.category || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {product.price !== undefined ? `$${product.price}` : "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       {product.stock !== undefined ? product.stock : "-"}
                     </td>
                   </tr>
