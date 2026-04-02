@@ -49,17 +49,6 @@ export function Header() {
         
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-2">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href}>
-              <Button 
-                variant="ghost" 
-                className={`text-white text-sm ${pathname === link.href ? 'bg-white/10' : ''}`}
-              >
-                {link.label}
-              </Button>
-            </Link>
-          ))}
-          
           {isLoggedIn ? (
             <div className="relative">
               <Button 
@@ -68,7 +57,7 @@ export function Header() {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <User size={18} />
-                {session?.user?.name || session?.user?.email}
+                {session?.user?.name || session?.user?.email?.split('@')[0]}
               </Button>
               
               {userMenuOpen && (
@@ -140,21 +129,6 @@ export function Header() {
       {/* Mobile Nav */}
       {mobileMenuOpen && (
         <nav className="md:hidden border-t border-primary/20 bg-navy px-4 py-4 space-y-2">
-          {navLinks.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Button 
-                variant="ghost" 
-                className={`w-full justify-start text-white text-sm ${pathname === link.href ? 'bg-white/10' : ''}`}
-              >
-                {link.label}
-              </Button>
-            </Link>
-          ))}
-          
           {isLoggedIn ? (
             <>
               <div className="border-t border-light-lavender/20 pt-2 mt-2">
