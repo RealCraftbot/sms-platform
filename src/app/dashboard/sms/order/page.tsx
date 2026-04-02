@@ -48,7 +48,11 @@ export default function SMSOrderPage() {
           console.log(servicesData.message)
         }
       }
-      setBalance(parseFloat(balanceData.balance) || 0)
+      const balanceValue = balanceData?.balance
+      if (balanceValue !== undefined && balanceValue !== null) {
+        const parsedBalance = typeof balanceValue === 'number' ? balanceValue : parseFloat(String(balanceValue))
+        setBalance(isNaN(parsedBalance) ? 0 : parsedBalance)
+      }
       setLoading(false)
     }).catch(() => {
       setError("Failed to load services")
@@ -209,19 +213,29 @@ export default function SMSOrderPage() {
 
           {selectedCountryData && (
             <div className="p-4 bg-white/5 rounded-lg space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-white">Price: ₦{selectedCountryData.price || "Not configured"}</span>
-                {paymentMethod === "wallet" && (
-                  selectedCountryData.price && hasSufficientFunds ? (
-                    <Badge className="bg-mint-green/20 text-mint-green">Sufficient funds</Badge>
-                  ) : (
-                    <Badge className="bg-red-500/20 text-red-400">Insufficient funds</Badge>
-                  )
-                )}
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <div>
+                  <span className="text-light-lavender text-sm">Price: </span>
+                  <span className="font-semibold text-white">₦{selectedCountryData.price || "Not configured"}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-light-lavender text-sm">Balance: </span>
+                  <span className="font-semibold text-white">₦{balance.toLocaleString()}</span>
+                </div>
               </div>
-              <p className="text-sm text-light-lavender">
-                Payment will be deducted from your wallet balance
-              </p>
+              {paymentMethod === "wallet" && (
+                <div className="pt-2 border-t border-white/10">
+                  {selectedCountryData.price ? (
+                    hasSufficientFunds ? (
+                      <Badge className="bg-mint-green/20 text-mint-green">Sufficient funds - You have ₦{(balance - (selectedCountryData.price || 0)).toLocaleString()} remaining</Badge>
+                    ) : (
+                      <Badge className="bg-red-500/20 text-red-400">Insufficient funds - You need ₦{((selectedCountryData.price || 0) - balance).toLocaleString()} more</Badge>
+                    )
+                  ) : (
+                    <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">Pricing not configured for this service</Badge>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -249,6 +263,8 @@ export default function SMSOrderPage() {
                 <Loader2 className="animate-spin" size={20} />
                 Processing...
               </span>
+            ) : !selectedCountryData?.price ? (
+              "Pricing Not Configured"
             ) : paymentMethod === "wallet" && !hasSufficientFunds ? (
               "Insufficient Funds"
             ) : (

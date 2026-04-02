@@ -22,7 +22,11 @@ export default function WalletPage() {
     fetch("/api/wallet/balance")
       .then(res => res.json())
       .then(data => {
-        setBalance(parseFloat(data.balance) || 0)
+        const balanceValue = data?.balance
+        if (balanceValue !== undefined && balanceValue !== null) {
+          const parsedBalance = typeof balanceValue === 'number' ? balanceValue : parseFloat(String(balanceValue))
+          setBalance(isNaN(parsedBalance) ? 0 : parsedBalance)
+        }
         setLoadingBalance(false)
       })
       .catch(() => setLoadingBalance(false))
