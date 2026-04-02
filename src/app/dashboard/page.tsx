@@ -97,11 +97,11 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-navy p-4 md:p-6">
+    <div className="p-4 md:p-6">
       {/* Welcome Section */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-white">
-          Welcome back, {session?.user?.name || 'User'}! 👋
+          Welcome back, {session?.user?.name || 'User'}!
         </h1>
         <p className="text-light-lavender text-sm md:text-base mt-1">
           Here is what is happening with your account today.

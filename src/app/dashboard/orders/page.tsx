@@ -87,48 +87,53 @@ export default function OrdersPage() {
   }
 
   if (loading) {
-    return <div>Loading orders...</div>
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-white">Loading orders...</div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Order History</h1>
-        <p className="text-muted-foreground">View all your orders</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Order History</h1>
+        <p className="text-light-lavender">View all your orders</p>
       </div>
 
-      <Card>
+      {/* Desktop Table View */}
+      <Card className="hidden md:block bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Your Orders</CardTitle>
+          <CardTitle className="text-white">Your Orders</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>SMS Code</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Action</TableHead>
+              <TableRow className="border-light-lavender/20">
+                <TableHead className="text-light-lavender">Order ID</TableHead>
+                <TableHead className="text-light-lavender">Type</TableHead>
+                <TableHead className="text-light-lavender">Phone Number</TableHead>
+                <TableHead className="text-light-lavender">SMS Code</TableHead>
+                <TableHead className="text-light-lavender">Amount</TableHead>
+                <TableHead className="text-light-lavender">Status</TableHead>
+                <TableHead className="text-light-lavender">Date</TableHead>
+                <TableHead className="text-light-lavender">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orders.map(order => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
-                  <TableCell className="capitalize">{order.type}</TableCell>
+                <TableRow key={order.id} className="border-light-lavender/10">
+                  <TableCell className="font-mono text-xs text-white">{order.id.slice(0, 8)}</TableCell>
+                  <TableCell className="capitalize text-white">{order.type}</TableCell>
                   <TableCell>
                     {order.type === "sms" && order.smsOrder?.phoneNumber && (
-                      <span className="font-mono text-sm">{order.smsOrder.phoneNumber}</span>
+                      <span className="font-mono text-sm text-white">{order.smsOrder.phoneNumber}</span>
                     )}
                     {order.type === "sms" && !order.smsOrder?.phoneNumber && (
-                      <span className="text-muted-foreground text-sm">-</span>
+                      <span className="text-light-lavender text-sm">-</span>
                     )}
                     {order.type === "log" && (
-                      <span className="text-muted-foreground text-sm">{(order.logOrder?.items as string[] || []).length} item(s)</span>
+                      <span className="text-light-lavender text-sm">{(order.logOrder?.items as string[] || []).length} item(s)</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -136,19 +141,19 @@ export default function OrdersPage() {
                       <Badge variant="default">{order.smsOrder.smsCode}</Badge>
                     )}
                     {order.type === "sms" && order.smsOrder?.smsText && !order.smsOrder?.smsCode && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[100px] inline-block">
+                      <span className="text-xs text-light-lavender truncate max-w-[100px] inline-block">
                         {order.smsOrder.smsText}
                       </span>
                     )}
                     {order.type === "sms" && !order.smsOrder?.smsCode && !order.smsOrder?.smsText && (
-                      <span className="text-muted-foreground text-sm">Waiting...</span>
+                      <span className="text-light-lavender text-sm">Waiting...</span>
                     )}
                   </TableCell>
-                  <TableCell>₦{order.amount}</TableCell>
+                  <TableCell className="text-white">₦{order.amount}</TableCell>
                   <TableCell>
                     <Badge variant={(statusColors[order.status] || "secondary") as "default" | "secondary" | "destructive" | "outline" | "success"}>{order.status}</Badge>
                   </TableCell>
-                  <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-light-lavender">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     {order.type === "sms" && order.status === "paid" && order.smsOrder?.supplierOrderId && (
                       <Button 
@@ -156,6 +161,7 @@ export default function OrdersPage() {
                         variant="outline"
                         onClick={() => checkSms(order.id)}
                         disabled={checkingId === order.id}
+                        className="text-white border-light-lavender/30"
                       >
                         {checkingId === order.id ? "Checking..." : "Check SMS"}
                       </Button>
@@ -166,24 +172,98 @@ export default function OrdersPage() {
             </TableBody>
           </Table>
           {orders.length === 0 && (
-            <p className="text-center py-8 text-muted-foreground">No orders yet</p>
+            <p className="text-center py-8 text-light-lavender">No orders yet</p>
           )}
         </CardContent>
       </Card>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {orders.map(order => (
+          <Card key={order.id} className="bg-navy/50 border-light-lavender/20">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-light-lavender text-xs">Order ID</span>
+                  <p className="font-mono text-white text-sm">{order.id.slice(0, 8)}</p>
+                </div>
+                <Badge variant={(statusColors[order.status] || "secondary") as "default" | "secondary" | "destructive" | "outline" | "success"}>{order.status}</Badge>
+              </div>
+              
+              <div className="flex justify-between">
+                <div>
+                  <span className="text-light-lavender text-xs">Type</span>
+                  <p className="text-white capitalize">{order.type}</p>
+                </div>
+                <div>
+                  <span className="text-light-lavender text-xs">Amount</span>
+                  <p className="text-white font-semibold">₦{order.amount}</p>
+                </div>
+              </div>
+
+              {order.type === "sms" && (
+                <>
+                  {order.smsOrder?.phoneNumber && (
+                    <div>
+                      <span className="text-light-lavender text-xs">Phone Number</span>
+                      <p className="font-mono text-white">{order.smsOrder.phoneNumber}</p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <span className="text-light-lavender text-xs">SMS</span>
+                    {order.smsOrder?.smsCode && (
+                      <p className="text-white font-semibold">{order.smsOrder.smsCode}</p>
+                    )}
+                    {order.smsOrder?.smsText && !order.smsOrder?.smsCode && (
+                      <p className="text-light-lavender text-sm truncate">{order.smsOrder.smsText}</p>
+                    )}
+                    {!order.smsOrder?.smsCode && !order.smsOrder?.smsText && (
+                      <p className="text-yellow-400 text-sm">Waiting for SMS...</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-between items-center pt-2 border-t border-light-lavender/10">
+                <span className="text-light-lavender text-xs">{new Date(order.createdAt).toLocaleDateString()}</span>
+                {order.type === "sms" && order.status === "paid" && order.smsOrder?.supplierOrderId && (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => checkSms(order.id)}
+                    disabled={checkingId === order.id}
+                    className="text-white border-light-lavender/30"
+                  >
+                    {checkingId === order.id ? "Checking..." : "Check SMS"}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {orders.length === 0 && (
+          <Card className="bg-navy/50 border-light-lavender/20">
+            <CardContent className="p-8 text-center">
+              <p className="text-light-lavender">No orders yet</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {orders.some(o => o.type === "sms" && o.smsOrder?.smsText) && (
-        <Card>
+        <Card className="bg-navy/50 border-light-lavender/20">
           <CardHeader>
-            <CardTitle>Received SMS Messages</CardTitle>
+            <CardTitle className="text-white">Received SMS Messages</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {orders.filter(o => o.type === "sms" && o.smsOrder?.smsText).map(order => (
-              <Alert key={order.id}>
-                <AlertDescription>
+              <Alert key={order.id} className="bg-white/5 border-light-lavender/20">
+                <AlertDescription className="text-white">
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between flex-wrap gap-2">
                       <span className="font-semibold">{order.smsOrder?.phoneNumber}</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-light-lavender">
                         {new Date(order.createdAt).toLocaleString()}
                       </span>
                     </div>

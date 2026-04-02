@@ -1,10 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
-import { Shield, LayoutDashboard, MessageSquare, FileText, Wallet, CreditCard, Settings, LogOut } from "lucide-react"
+import { Shield, LayoutDashboard, MessageSquare, FileText, Wallet, CreditCard, Settings, LogOut, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const userNavItems = [
@@ -30,6 +31,18 @@ export default function DashboardLayout({
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [mobileMenuOpen])
 
   if (status === "loading") {
     return (
@@ -49,13 +62,17 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-navy flex flex-col md:flex-row">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:block w-64 bg-navy/80 border-r border-light-lavender/20 p-4 shrink-0">
-        <div className="mb-6 p-4">
-          <p className="text-white font-medium">{session.user?.name || 'User'}</p>
+      <aside className="hidden md:flex flex-col w-64 bg-navy/80 border-r border-light-lavender/20 shrink-0 fixed h-full">
+        <div className="p-4 border-b border-light-lavender/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="h-6 w-6 text-primary-blue" />
+            <span className="text-white font-bold">SMSReseller</span>
+          </div>
+          <p className="text-white text-sm truncate">{session.user?.name || 'User'}</p>
           <p className="text-light-lavender/50 text-xs truncate">{session.user?.email}</p>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <p className="text-light-lavender/50 text-xs px-3 mb-2">Menu</p>
           {userNavItems.map((item) => (
             <Link key={item.href} href={item.href}>
@@ -95,7 +112,7 @@ export default function DashboardLayout({
           )}
         </nav>
 
-        <div className="mt-auto pt-4 border-t border-light-lavender/20">
+        <div className="p-4 border-t border-light-lavender/20">
           <Button
             variant="ghost"
             className="w-full justify-start text-red-400 hover:bg-red-400/10 text-sm"
@@ -108,42 +125,113 @@ export default function DashboardLayout({
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden bg-navy/80 border-b border-light-lavender/20 p-4 sticky top-[60px] z-40">
+      <div className="md:hidden bg-navy/95 backdrop-blur border-b border-light-lavender/20 p-4 sticky top-0 z-50">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white font-medium text-sm">{session.user?.name || 'User'}</p>
-            <p className="text-light-lavender text-xs">{session.user?.email}</p>
+          <div className="flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary-blue" />
+            <span className="text-white font-bold">SMSReseller</span>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-400"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            className="text-white"
+            onClick={() => setMobileMenuOpen(true)}
           >
-            <LogOut size={18} />
+            <Menu size={24} />
           </Button>
-        </div>
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-          {userNavItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={pathname === item.href ? "default" : "outline"}
-                size="sm"
-                className={`text-xs whitespace-nowrap ${
-                  pathname === item.href 
-                    ? 'bg-mint-green text-navy' 
-                    : 'text-white border-light-lavender/30'
-                }`}
-              >
-                {item.label}
-              </Button>
-            </Link>
-          ))}
         </div>
       </div>
 
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-0 h-full w-72 bg-navy border-l border-light-lavender/20 shadow-xl">
+            <div className="p-4 border-b border-light-lavender/20 flex items-center justify-between">
+              <div>
+                <p className="text-white font-medium">{session.user?.name || 'User'}</p>
+                <p className="text-light-lavender/50 text-xs truncate">{session.user?.email}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <X size={20} />
+              </Button>
+            </div>
+            
+            <nav className="p-4 space-y-1">
+              <p className="text-light-lavender/50 text-xs px-3 mb-2">Menu</p>
+              {userNavItems.map((item) => (
+                <Link 
+                  key={item.href} 
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start text-sm ${
+                      pathname === item.href 
+                        ? 'bg-mint-green/10 text-mint-green' 
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <item.icon className="mr-3 h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              ))}
+
+              {isAdmin && (
+                <>
+                  <p className="text-mint-green text-xs px-3 mb-2 mt-4">Admin</p>
+                  {adminNavItems.map((item) => (
+                    <Link 
+                      key={item.href} 
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant="ghost"
+                        className={`w-full justify-start text-sm ${
+                          pathname === item.href 
+                            ? 'bg-mint-green/10 text-mint-green' 
+                            : 'text-white hover:bg-white/10'
+                        }`}
+                      >
+                        <item.icon className="mr-3 h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    </Link>
+                  ))}
+                </>
+              )}
+            </nav>
+
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-light-lavender/20">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-400 hover:bg-red-400/10 text-sm"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  signOut({ callbackUrl: "/" })
+                }}
+              >
+                <LogOut className="mr-3 h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 md:ml-64">
         {children}
       </main>
     </div>

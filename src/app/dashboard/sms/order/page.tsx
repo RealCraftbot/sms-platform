@@ -118,16 +118,16 @@ export default function SMSOrderPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-navy p-4 md:p-6 flex items-center justify-center">
+      <div className="min-h-[400px] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-mint-green" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-0">
       <div>
-        <h1 className="text-3xl font-bold text-white">Order SMS Verification</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Order SMS Verification</h1>
         <p className="text-light-lavender">Get a temporary phone number for OTP verification</p>
       </div>
 
@@ -136,8 +136,8 @@ export default function SMSOrderPage() {
           <CardTitle className="text-white">Your Wallet Balance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-white">₦{balance.toLocaleString()}</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <span className="text-2xl font-bold text-mint-green">₦{balance.toLocaleString()}</span>
             <Button variant="outline" onClick={() => router.push("/dashboard/wallet")} className="text-white border-light-lavender">
               Add Funds
             </Button>

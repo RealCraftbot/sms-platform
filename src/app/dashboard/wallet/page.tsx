@@ -93,67 +93,67 @@ export default function WalletPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-0">
       <div>
-        <h1 className="text-3xl font-bold">Wallet</h1>
-        <p className="text-muted-foreground">Add funds to your account</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Wallet</h1>
+        <p className="text-light-lavender">Add funds to your account</p>
       </div>
 
-      <Card>
+      <Card className="bg-navy/50 border-light-lavender/20">
         <CardHeader>
-          <CardTitle>Current Balance</CardTitle>
-          <CardDescription>Your available funds for orders</CardDescription>
+          <CardTitle className="text-white">Current Balance</CardTitle>
+          <CardDescription className="text-light-lavender">Your available funds for orders</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingBalance ? (
-            <div className="text-4xl font-bold">Loading...</div>
+            <div className="text-2xl md:text-4xl font-bold text-white">Loading...</div>
           ) : (
-            <div className="text-4xl font-bold">₦{balance.toLocaleString()}</div>
+            <div className="text-2xl md:text-4xl font-bold text-mint-green">₦{balance.toLocaleString()}</div>
           )}
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="opacity-60">
+        <Card className="bg-navy/50 border-light-lavender/20 opacity-60">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Paystack</CardTitle>
+              <CardTitle className="text-white text-lg">Paystack</CardTitle>
               <Badge variant="secondary">Coming Soon</Badge>
             </div>
-            <CardDescription>Card, Bank, USSD</CardDescription>
+            <CardDescription className="text-light-lavender">Card, Bank, USSD</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button disabled className="w-full">
+            <Button disabled className="w-full bg-white/10 text-white">
               Coming Soon
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="opacity-60">
+        <Card className="bg-navy/50 border-light-lavender/20 opacity-60">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Crypto</CardTitle>
+              <CardTitle className="text-white text-lg">Crypto</CardTitle>
               <Badge variant="secondary">Coming Soon</Badge>
             </div>
-            <CardDescription>Bitcoin, USDT, ETH</CardDescription>
+            <CardDescription className="text-light-lavender">Bitcoin, USDT, ETH</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button disabled className="w-full">
+            <Button disabled className="w-full bg-white/10 text-white">
               Coming Soon
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-primary">
+        <Card className="bg-navy/50 border-mint-green/50">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Manual Transfer</CardTitle>
-              <Badge variant="default">Active</Badge>
+              <CardTitle className="text-white text-lg">Manual Transfer</CardTitle>
+              <Badge className="bg-mint-green/20 text-mint-green">Active</Badge>
             </div>
-            <CardDescription>Bank transfer with proof</CardDescription>
+            <CardDescription className="text-light-lavender">Bank transfer with proof</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild className="w-full">
+            <Button asChild className="w-full bg-mint-green text-navy hover:bg-mint-green/80">
               <a href="#manual-transfer">Fund Wallet</a>
             </Button>
           </CardContent>
@@ -161,31 +161,32 @@ export default function WalletPage() {
       </div>
 
       <div id="manual-transfer">
-        <Card>
+        <Card className="bg-navy/50 border-light-lavender/20">
           <CardHeader>
-            <CardTitle>Manual Bank Transfer</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white">Manual Bank Transfer</CardTitle>
+            <CardDescription className="text-light-lavender">
               Transfer to our bank account and upload the receipt. Funds will be added to your wallet after admin approval.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="font-semibold mb-2">Bank Details:</p>
-              <p>Bank: First Bank of Nigeria</p>
-              <p>Account Name: SMSReseller Ltd</p>
-              <p>Account Number: 1234567890</p>
+            <div className="p-4 bg-white/5 rounded-lg border border-light-lavender/20">
+              <p className="font-semibold mb-2 text-white">Bank Details:</p>
+              <p className="text-light-lavender">Bank: First Bank of Nigeria</p>
+              <p className="text-light-lavender">Account Name: SMSReseller Ltd</p>
+              <p className="text-light-lavender">Account Number: 1234567890</p>
             </div>
             <div className="space-y-2">
-              <Label>Amount (NGN)</Label>
+              <Label className="text-white">Amount (NGN)</Label>
               <Input
                 type="number"
                 placeholder="Enter amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                className="bg-white/10 border-light-lavender/30 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label>Transfer Screenshot (Proof of Payment)</Label>
+              <Label className="text-white">Transfer Screenshot (Proof of Payment)</Label>
               <Input
                 type="file"
                 accept="image/*"
@@ -202,30 +203,32 @@ export default function WalletPage() {
                   }
                 }}
                 disabled={uploading}
+                className="bg-white/10 border-light-lavender/30 text-white"
               />
               {uploadedUrl && (
-                <p className="text-sm text-green-600">Proof uploaded successfully!</p>
+                <p className="text-sm text-mint-green">Proof uploaded successfully!</p>
               )}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-light-lavender">
                 Screenshot will be uploaded to Cloudinary for secure storage
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Notes (Optional)</Label>
+              <Label className="text-white">Notes (Optional)</Label>
               <Input
                 placeholder="Any additional notes"
                 value={manualNotes}
                 onChange={(e) => setManualNotes(e.target.value)}
+                className="bg-white/10 border-light-lavender/30 text-white"
               />
             </div>
             <Button 
               onClick={handleManualUpload} 
               disabled={!manualFile || !amount || uploading || !uploadedUrl}
-              className="w-full"
+              className="w-full bg-mint-green text-navy hover:bg-mint-green/80"
             >
               {uploading ? "Processing..." : "Submit Payment for Approval"}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-light-lavender text-center">
               Your payment will be reviewed by admin. Funds are added to wallet after approval.
             </p>
           </CardContent>
