@@ -26,11 +26,11 @@ export async function GET(request: Request) {
 
     const serialized = rules.map(rule => ({
       ...rule,
-      actualCost: rule.actualCost.toNumber(),
+      actualCost: rule.actualCost?.toNumber() ?? null,
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
-      markupPercentage: rule.markupPercentage.toNumber(),
-      profitPerUnit: rule.profitPerUnit.toNumber(),
-      profitMargin: rule.profitMargin.toNumber(),
+      markupPercentage: rule.markupPercentage?.toNumber() ?? null,
+      profitPerUnit: rule.profitPerUnit?.toNumber() ?? null,
+      profitMargin: rule.profitMargin?.toNumber() ?? null,
       minPriceNGN: rule.minPriceNGN?.toNumber() ?? null,
       maxPriceNGN: rule.maxPriceNGN?.toNumber() ?? null,
     }))
