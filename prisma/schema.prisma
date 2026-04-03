@@ -145,13 +145,13 @@ model PricingRule {
   countryCode       String?
   platform          String?
 
-  actualCost        Decimal  @db.Decimal(10, 6)
+  actualCost        Decimal? @db.Decimal(10, 6)
   actualCurrency    String   @default("USD")
-  markupPercentage  Decimal  @db.Decimal(5, 2)
+  markupPercentage  Decimal? @db.Decimal(5, 2)
   sellingPriceNGN   Decimal  @db.Decimal(10, 2)
 
-  profitPerUnit     Decimal  @db.Decimal(10, 2)
-  profitMargin     Decimal  @db.Decimal(5, 2)
+  profitPerUnit     Decimal? @db.Decimal(10, 2)
+  profitMargin     Decimal? @db.Decimal(5, 2)
 
   minPriceNGN      Decimal? @db.Decimal(10, 2)
   maxPriceNGN      Decimal? @db.Decimal(10, 2)
