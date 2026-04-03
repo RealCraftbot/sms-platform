@@ -113,6 +113,7 @@ export async function GET(request: Request) {
       })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let services: any[] = []
     let balance: number | null = null
     let error: string | null = null
@@ -139,11 +140,13 @@ export async function GET(request: Request) {
           if (response.ok) {
             const data = await response.json()
             if (Array.isArray(data)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               services = [...services, ...data.map((p: any) => ({
                 ...p,
                 supplier: config.name,
               }))]
             } else if (data.products && Array.isArray(data.products)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               services = [...services, ...data.products.map((p: any) => ({
                 ...p,
                 supplier: config.name,
@@ -170,6 +173,7 @@ export async function GET(request: Request) {
       stockQuantity: number
     }>()
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const rule of pricingRules as any[]) {
       const key = `${rule.type}-${rule.service}-${rule.country || ""}-${rule.platform || ""}`
       adminPrices.set(key, {
@@ -180,6 +184,7 @@ export async function GET(request: Request) {
     }
 
     if (type === "sms") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const servicesMap = new Map<string, any>()
 
       for (const service of services) {

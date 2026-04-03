@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { ServiceType } from "@prisma/client"
+import { ServiceType, OrderStatus, PaymentStatus } from "@prisma/client"
+import { getBestSupplier } from "@/lib/suppliers"
 
 export async function POST(request: Request) {
   try {
@@ -32,29 +33,23 @@ export async function POST(request: Request) {
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { transaction: true },
+      include: { items: true, pricingRule: true },
     })
 
     if (!order || order.userId !== user.id) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
-    if (order.status === "paid" || order.status === "approved") {
+    if (order.status === OrderStatus.APPROVED || order.status === OrderStatus.PROCESSING) {
       return NextResponse.json({ message: "Order already paid" })
     }
 
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: "paid",
+        status: OrderStatus.APPROVED,
         paidAt: new Date(),
-        paymentStatus: "paid",
-        transaction: {
-          update: {
-            status: "success",
-            providerTxId: reference,
-          }
-        }
+        paymentStatus: PaymentStatus.PAID,
       }
     })
 
@@ -62,6 +57,8 @@ export async function POST(request: Request) {
       await processSMSOrder(order.id)
     } else if (order.type === ServiceType.SOCIAL_LOG) {
       await processLogOrder(order.id)
+    } else if (order.type === ServiceType.SOCIAL_BOOST) {
+      await processBoostOrder(order.id)
     }
 
     return NextResponse.json({ success: true })
@@ -77,26 +74,71 @@ export async function POST(request: Request) {
 async function processSMSOrder(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { items: true },
+    include: { items: true, pricingRule: true },
   })
 
   if (!order || order.items.length === 0) return
 
-  const phoneNumber = "+234" + Math.floor(Math.random() * 900000000 + 100000000)
-  
-  await prisma.orderItem.update({
-    where: { id: order.items[0].id },
-    data: {
-      phoneNumber,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-      status: "delivered",
-    }
-  })
+  const item = order.items[0]
+  const provider = await getBestSupplier("SMS")
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status: "processing" },
-  })
+  if (!provider) {
+    console.error("No SMS provider available")
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.PENDING },
+    })
+    return
+  }
+
+  const service = order.pricingRule?.service || "whatsapp"
+  const country = order.pricingRule?.country || "ng"
+
+  const orderResult = await provider.placeOrder(service, 1, { country })
+
+  if (orderResult.success && orderResult.phoneNumber) {
+    await prisma.orderItem.update({
+      where: { id: item.id },
+      data: {
+        phoneNumber: orderResult.phoneNumber,
+        expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+        status: "pending",
+      }
+    })
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.PROCESSING },
+    })
+
+    const providerRecord = await prisma.provider.findFirst({ where: { name: provider.name } })
+    if (providerRecord) {
+      await prisma.providerLog.create({
+        data: {
+          providerId: providerRecord.id,
+          action: "ORDER_PLACED",
+          request: { service, country },
+          response: { orderId: orderResult.externalOrderId, phone: orderResult.phoneNumber },
+          success: true,
+        }
+      })
+    }
+  } else {
+    console.error("SMS order failed:", orderResult.message)
+    const providerRecord = await prisma.provider.findFirst({ where: { name: provider.name } })
+    if (providerRecord) {
+      await prisma.providerLog.create({
+        data: {
+          providerId: providerRecord.id,
+          action: "ORDER_PLACED",
+          request: { service, country },
+          response: { error: orderResult.message },
+          success: false,
+          errorMessage: orderResult.message,
+        }
+      })
+    }
+  }
 }
 
 async function processLogOrder(orderId: string) {
@@ -130,6 +172,75 @@ async function processLogOrder(orderId: string) {
 
   await prisma.order.update({
     where: { id: orderId },
-    data: { status: "completed" },
+    data: { status: OrderStatus.COMPLETED },
   })
+}
+
+async function processBoostOrder(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: true, pricingRule: true },
+  })
+
+  if (!order || order.items.length === 0) return
+
+  const item = order.items[0]
+  const provider = await getBestSupplier("BOOSTING")
+
+  if (!provider) {
+    console.error("No Boosting provider available")
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.PENDING },
+    })
+    return
+  }
+
+  const service = order.pricingRule?.service || "followers"
+  const link = item.targetUrl || ""
+
+  const orderResult = await provider.placeOrder(service, order.quantity || 100, { link })
+
+  if (orderResult.success) {
+    await prisma.orderItem.update({
+      where: { id: item.id },
+      data: {
+        boostStatus: "processing",
+        boostStartedAt: new Date(),
+      }
+    })
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.PROCESSING },
+    })
+
+    const providerRecord = await prisma.provider.findFirst({ where: { name: provider.name } })
+    if (providerRecord) {
+      await prisma.providerLog.create({
+        data: {
+          providerId: providerRecord.id,
+          action: "ORDER_PLACED",
+          request: { service, link, quantity: order.quantity },
+          response: { orderId: orderResult.externalOrderId },
+          success: true,
+        }
+      })
+    }
+  } else {
+    console.error("Boost order failed:", orderResult.message)
+    const providerRecord = await prisma.provider.findFirst({ where: { name: provider.name } })
+    if (providerRecord) {
+      await prisma.providerLog.create({
+        data: {
+          providerId: providerRecord.id,
+          action: "ORDER_PLACED",
+          request: { service, link, quantity: order.quantity },
+          response: { error: orderResult.message },
+          success: false,
+          errorMessage: orderResult.message,
+        }
+      })
+    }
+  }
 }

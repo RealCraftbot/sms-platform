@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkAdminAuth } from "@/lib/admin-auth"
+import { PaymentStatus, OrderStatus } from "@prisma/client"
 
 export async function POST(
   request: Request,
@@ -48,10 +49,10 @@ export async function POST(
       await prisma.order.update({
         where: { id: payment.orderId },
         data: {
-          paymentStatus: "paid",
+          paymentStatus: PaymentStatus.PAID,
           totalRevenue: finalAmount,
           paidAt: new Date(),
-          status: "approved",
+          status: OrderStatus.APPROVED,
         },
       })
 
@@ -74,7 +75,7 @@ export async function POST(
 
     await prisma.order.update({
       where: { id: payment.orderId },
-      data: { status: "cancelled" },
+      data: { status: OrderStatus.CANCELLED },
     })
 
     return NextResponse.json({ success: true, status: newStatus })

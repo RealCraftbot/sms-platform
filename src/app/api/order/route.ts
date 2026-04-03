@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { ServiceType } from "@prisma/client"
-import { createSupplierManager } from "@/lib/suppliers"
+import { ServiceType, OrderStatus, PaymentStatus } from "@prisma/client"
+import { getProviderBySlug } from "@/lib/providers"
 import { Prisma } from "@prisma/client"
 
 export async function GET(request: Request) {
@@ -41,16 +41,13 @@ export async function GET(request: Request) {
         transaction: true,
         manualPayment: true,
         items: true,
+        provider: true,
       },
       orderBy: { createdAt: "desc" },
     })
 
-    const serialized = orders.map((order: any) => {
-      const totalAmount = (order.totalRevenue ? order.totalRevenue.toString() : null) 
-        || (order.unitSellingPrice ? order.unitSellingPrice.toString() : null)
-        || (order.amount ? String(order.amount) : null)
-        || "0"
-      
+    const serialized = orders.map((order) => {
+      const totalAmount = order.totalRevenue?.toString() || "0"
       const paymentMethodName = order.paymentMethod || order.paymentMethodRel?.name || "Unknown"
       const isWalletFunding = !order.pricingRule || order.paymentMethod === "Manual" || order.paymentMethod === "Wallet Funding"
       
@@ -59,7 +56,7 @@ export async function GET(request: Request) {
         type: isWalletFunding ? "WALLET_FUNDING" : order.type,
         typeLabel: isWalletFunding ? "Wallet Funding" : order.type,
         status: order.status,
-        totalAmount: totalAmount,
+        totalAmount,
         currency: "NGN",
         createdAt: order.createdAt.toISOString(),
         paymentMethod: paymentMethodName,
@@ -68,7 +65,8 @@ export async function GET(request: Request) {
         platform: order.pricingRule?.platform || "",
         subService: order.pricingRule?.subService || "",
         displayName: isWalletFunding ? `Wallet Top-up (${paymentMethodName})` : (order.pricingRule?.displayName || ""),
-        items: order.items?.map((item: any) => ({
+        providerName: order.provider?.name || null,
+        items: order.items?.map((item) => ({
           id: item.id,
           phoneNumber: item.phoneNumber,
           smsCode: item.smsCode,
@@ -125,9 +123,10 @@ export async function POST(request: Request) {
       pricingRule = await prisma.pricingRule.findUnique({
         where: { id: pricingRuleId },
         include: {
-          supplierProduct: {
-            include: { supplier: true },
+          providerProduct: {
+            include: { provider: true },
           },
+          provider: true,
         },
       })
     } else if (service && country && serviceType) {
@@ -139,9 +138,10 @@ export async function POST(request: Request) {
           isActive: true,
         },
         include: {
-          supplierProduct: {
-            include: { supplier: true },
+          providerProduct: {
+            include: { provider: true },
           },
+          provider: true,
         },
       })
     }
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
     }
 
     const totalRevenue = Number(pricingRule.sellingPriceNGN) * quantity
-    const totalCost = Number(pricingRule.costPrice) * quantity
+    const totalCost = Number(pricingRule.actualCost) * quantity
     const profit = Number(pricingRule.profitPerUnit) * quantity
 
     if (paymentMethodRecord.type === "wallet") {
@@ -192,30 +192,32 @@ export async function POST(request: Request) {
         data: { balance: { decrement: totalRevenue } },
       })
 
-      let supplierId: string | undefined
-      let supplierName: string | undefined
+      let providerId: string | undefined
+      let providerName: string | undefined
       let externalOrderId: string | undefined
       let purchaseResult: { success: boolean; externalOrderId?: string; phoneNumber?: string; accounts?: unknown[]; boostStatus?: string; message?: string } | undefined
 
-      if (pricingRule.supplierProduct?.supplier) {
-        supplierId = pricingRule.supplierProduct.supplier.id
-        supplierName = pricingRule.supplierProduct.supplier.name
+      if (pricingRule.providerProduct?.provider) {
+        providerId = pricingRule.providerProduct.provider.id
+        providerName = pricingRule.providerProduct.provider.name
 
         try {
-          const manager = createSupplierManager(pricingRule.supplierProduct.supplier)
-          purchaseResult = await manager.purchase(
-            `${pricingRule.supplierProduct.supplier.name}-${pricingRule.supplierProduct.externalId}`,
-            quantity,
-            { targetUrl, ...options }
-          )
+          const manager = getProviderBySlug(pricingRule.providerProduct.provider.slug)
+          if (manager) {
+            purchaseResult = await manager.placeOrder(
+              pricingRule.providerProduct.externalId,
+              quantity,
+              { targetUrl, ...options }
+            )
 
-          if (purchaseResult.success) {
-            externalOrderId = purchaseResult.externalOrderId
-          } else {
-            console.error("Supplier purchase failed:", purchaseResult.message)
+            if (purchaseResult?.success) {
+              externalOrderId = purchaseResult.externalOrderId
+            } else {
+              console.error("Provider purchase failed:", purchaseResult?.message)
+            }
           }
         } catch (error) {
-          console.error("Supplier error:", error)
+          console.error("Provider error:", error)
         }
       }
 
@@ -228,13 +230,12 @@ export async function POST(request: Request) {
           status: purchaseResult?.phoneNumber ? "delivered" : "pending",
         })
       } else if (pricingRule.type === ServiceType.SOCIAL_LOG && purchaseResult?.accounts) {
-        for (const acc of purchaseResult.accounts) {
-          const accData = acc as { id?: string; email?: string; password?: string; cookies?: string }
+        for (const acc of purchaseResult.accounts as Array<{ id?: string; email?: string; password?: string; cookies?: string }>) {
           orderItemsData.push({
-            accountId: accData.id,
-            accountEmail: accData.email,
-            accountPassword: accData.password,
-            accountCookies: accData.cookies,
+            accountId: acc.id,
+            accountEmail: acc.email,
+            accountPassword: acc.password,
+            accountCookies: acc.cookies,
             status: "delivered",
             deliveredAt: new Date(),
           })
@@ -256,17 +257,17 @@ export async function POST(request: Request) {
           pricingRuleId: pricingRule.id,
           paymentMethodId: paymentMethodRecord.id,
           paymentMethod: paymentMethodRecord.name,
-          paymentStatus: "paid",
+          paymentStatus: PaymentStatus.PAID,
           type: pricingRule.type,
-          status: "processing",
+          status: OrderStatus.PROCESSING,
           quantity,
-          unitCostPrice: pricingRule.costPrice,
+          unitCostPrice: pricingRule.actualCost,
           unitSellingPrice: pricingRule.sellingPriceNGN,
           totalCost,
           totalRevenue,
           profit,
-          supplierId,
-          supplierName,
+          providerId,
+          providerName,
           externalOrderId,
           paidAt: new Date(),
           canCancelUntil: pricingRule.type === ServiceType.SMS_NUMBER
@@ -295,11 +296,11 @@ export async function POST(request: Request) {
           pricingRuleId: pricingRule.id,
           paymentMethodId: paymentMethodRecord.id,
           paymentMethod: paymentMethodRecord.name,
-          paymentStatus: "pending",
+          paymentStatus: PaymentStatus.PENDING,
           type: pricingRule.type,
-          status: "pending",
+          status: OrderStatus.PENDING,
           quantity,
-          unitCostPrice: pricingRule.costPrice,
+          unitCostPrice: pricingRule.actualCost,
           unitSellingPrice: pricingRule.sellingPriceNGN,
           totalCost,
           totalRevenue,

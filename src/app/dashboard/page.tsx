@@ -48,6 +48,9 @@ interface DashboardData {
   completedOrders: number
   recentOrders: RecentOrder[]
   services: { name: string; count: number }[]
+  user?: {
+    createdAt: string
+  }
 }
 
 const statusColors: Record<string, string> = {
@@ -275,7 +278,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-white font-semibold">Member Since</h3>
-                <p className="text-light-lavender text-sm">{session?.user?.email ? "April 2026" : "Not logged in"}</p>
+                <p className="text-light-lavender text-sm">{data?.user?.createdAt ? new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : (session?.user?.email ? "N/A" : "Not logged in")}</p>
               </div>
             </div>
             <p className="text-light-lavender text-xs">

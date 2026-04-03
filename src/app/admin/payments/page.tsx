@@ -117,7 +117,11 @@ export default function PaymentsPage() {
       const data = await res.json()
       alert(data.message || `Payment ${action}d!`)
       setReviewNotes("")
-      delete customAmount[id]
+      setCustomAmount(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
       fetchPayments(adminId!)
     } catch {
       alert("Something went wrong")

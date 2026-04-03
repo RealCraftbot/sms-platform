@@ -37,11 +37,11 @@ export async function GET() {
     })
 
     const pendingOrders = await prisma.order.count({
-      where: { userId: user.id, status: "awaiting_approval" },
+      where: { userId: user.id, status: "PENDING" },
     })
 
     const completedOrders = await prisma.order.count({
-      where: { userId: user.id, status: "completed" },
+      where: { userId: user.id, status: "COMPLETED" },
     })
 
     const recentOrders = await prisma.order.findMany({

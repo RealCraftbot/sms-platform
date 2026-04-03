@@ -46,10 +46,10 @@ export async function GET() {
   const pricingRules = await prisma.pricingRule.findMany({
     where: { isActive: true },
     include: {
-      supplierProduct: {
+      providerProduct: {
         select: {
-          minOrder: true,
-          maxOrder: true,
+          minQuantity: true,
+          maxQuantity: true,
         },
       },
     },
@@ -64,7 +64,7 @@ export async function GET() {
       return {
         ...country,
         price: rule ? Number(rule.sellingPriceNGN) : null,
-        costPrice: rule ? Number(rule.costPrice) : null,
+        costPrice: rule ? Number(rule.actualCost) : null,
         stock: rule?.stockQuantity ?? null,
       }
     })
@@ -84,7 +84,7 @@ export async function GET() {
         id: rule.id,
         name: rule.displayName,
         price: Number(rule.sellingPriceNGN),
-        costPrice: Number(rule.costPrice),
+        costPrice: Number(rule.actualCost),
         stock: rule.stockQuantity,
         description: rule.description,
       })),
@@ -105,9 +105,9 @@ export async function GET() {
             id: rule.id,
             name: rule.displayName,
             price: Number(rule.sellingPriceNGN),
-            costPrice: Number(rule.costPrice),
-            minOrder: rule.supplierProduct?.minOrder ?? 1,
-            maxOrder: rule.supplierProduct?.maxOrder ?? 10000,
+            costPrice: Number(rule.actualCost),
+            minOrder: rule.providerProduct?.minQuantity ?? 1,
+            maxOrder: rule.providerProduct?.maxQuantity ?? 10000,
           })),
         }
       }),

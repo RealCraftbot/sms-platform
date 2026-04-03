@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createSupplierManager } from "@/lib/suppliers"
-import { ServiceType } from "@prisma/client"
+import { ServiceType, OrderStatus, PaymentStatus } from "@prisma/client"
+import { getProviderBySlug } from "@/lib/providers"
 
 export async function POST(request: Request) {
   try {
@@ -27,11 +27,12 @@ export async function POST(request: Request) {
         items: true,
         pricingRule: {
           include: {
-            supplierProduct: {
-              include: { supplier: true },
+            providerProduct: {
+              include: { provider: true },
             },
           },
         },
+        provider: true,
       },
     })
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (order.status !== "paid" && order.status !== "processing") {
+    if (order.status !== OrderStatus.PROCESSING && order.status !== OrderStatus.APPROVED) {
       return NextResponse.json({ error: "Order cannot be cancelled" }, { status: 400 })
     }
 
@@ -53,22 +54,25 @@ export async function POST(request: Request) {
 
     let refundSuccessful = false
 
-    if (order.pricingRule?.type === ServiceType.SMS_NUMBER && order.supplierId) {
+    if (order.pricingRule?.type === ServiceType.SMS_NUMBER && order.providerId && order.externalOrderId) {
       try {
-        const supplier = await prisma.supplier.findUnique({
-          where: { id: order.supplierId },
+        const provider = await prisma.provider.findUnique({
+          where: { id: order.providerId },
         })
 
-        if (supplier) {
-          const manager = createSupplierManager(supplier)
-          refundSuccessful = await manager.cancel(order.externalOrderId!)
+        if (provider) {
+          const manager = getProviderBySlug(provider.slug)
+          if (manager) {
+            const result = await manager.cancelOrder(order.externalOrderId)
+            refundSuccessful = result.success
+          }
         }
       } catch (error) {
-        console.error("Supplier cancel error:", error)
+        console.error("Provider cancel error:", error)
       }
     }
 
-    const refundAmount = order.paymentStatus === "paid" ? Number(order.totalRevenue) : 0
+    const refundAmount = order.paymentStatus === PaymentStatus.PAID ? Number(order.totalRevenue) : 0
 
     await prisma.user.update({
       where: { id: order.userId },
@@ -80,11 +84,11 @@ export async function POST(request: Request) {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: "cancelled",
+        status: OrderStatus.CANCELLED,
         isCancelled: true,
         cancellationReason: "User requested cancellation",
         cancelledAt: new Date(),
-        paymentStatus: refundAmount > 0 ? "refunded" : "cancelled",
+        paymentStatus: refundAmount > 0 ? PaymentStatus.REFUNDED : PaymentStatus.FAILED,
       },
       include: {
         items: true,
@@ -99,7 +103,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ...updatedOrder,
       refundedAmount: refundAmount,
-      supplierRefundStatus: refundSuccessful ? "success" : "failed",
+      providerRefundStatus: refundSuccessful ? "success" : "failed",
       newBalance: user?.balance,
     })
   } catch (error) {

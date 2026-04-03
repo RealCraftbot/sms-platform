@@ -1,109 +1,163 @@
-import { ServiceType, Supplier } from "@prisma/client"
-import { SupplierProduct, PurchaseResult, HealthCheckResult, BoostStatus, SMSCheckResult } from "./base"
-import { createSMSPoolSupplier, SMSPoolSupplier } from "./sms-pool"
-import { createSocialLogSupplier, SocialLogSupplier } from "./social-log"
-import { createSocialBoostSupplier, SocialBoostSupplier } from "./social-boost"
+import { BaseProvider, ProviderProduct, BalanceResult, CostResult, OrderResult } from "../providers/base"
 
-export type SupplierInstance = SMSPoolSupplier | SocialLogSupplier | SocialBoostSupplier
-
-export interface SupplierManagerConfig {
-  supplier: Supplier
-}
-
-export class SupplierManager {
-  private instance: SupplierInstance | null = null
-  private supplierConfig: Supplier
-
-  constructor(config: SupplierManagerConfig) {
-    this.supplierConfig = config.supplier
-  }
-
-  private getInstance(): SupplierInstance {
-    if (this.instance) {
-      return this.instance
-    }
-
-    switch (this.supplierConfig.type) {
-      case ServiceType.SMS_NUMBER:
-        this.instance = createSMSPoolSupplier({
-          apiKey: this.supplierConfig.apiKey,
-          id: this.supplierConfig.id,
-        })
-        break
-      case ServiceType.SOCIAL_LOG:
-        this.instance = createSocialLogSupplier({
-          baseUrl: this.supplierConfig.baseUrl,
-          apiKey: this.supplierConfig.apiKey,
-          apiSecret: this.supplierConfig.apiSecret || "",
-          id: this.supplierConfig.id,
-        })
-        break
-      case ServiceType.SOCIAL_BOOST:
-        this.instance = createSocialBoostSupplier({
-          baseUrl: this.supplierConfig.baseUrl,
-          apiKey: this.supplierConfig.apiKey,
-          id: this.supplierConfig.id,
-        })
-        break
-      default:
-        throw new Error(`Unsupported supplier type: ${this.supplierConfig.type}`)
-    }
-
-    return this.instance
-  }
-
-  async getProducts(): Promise<SupplierProduct[]> {
-    return this.getInstance().getProducts()
-  }
-
-  async purchase(
-    productId: string,
-    quantity: number,
-    options?: Record<string, string>
-  ): Promise<PurchaseResult> {
-    return this.getInstance().purchase(productId, quantity, options)
-  }
-
-  async healthCheck(): Promise<HealthCheckResult> {
-    return this.getInstance().healthCheck()
-  }
-
-  async getBalance(): Promise<number> {
-    return this.getInstance().getBalance()
-  }
-
-  canCancel(): boolean {
-    return this.getInstance().canCancel?.() ?? false
-  }
-
-  async cancel(orderId: string): Promise<boolean> {
-    if (!this.canCancel()) {
-      return false
-    }
-    return this.getInstance().cancel?.(orderId) ?? false
-  }
-
-  async checkStatus(orderId: string): Promise<BoostStatus> {
-    const instance = this.getInstance() as SocialBoostSupplier
-    if (instance.checkStatus) {
-      return instance.checkStatus(orderId)
-    }
-    return { status: "unknown", progress: 0, delivered: 0, remaining: 0 }
-  }
-
-  async checkSms(orderId: string): Promise<SMSCheckResult> {
-    const instance = this.getInstance() as SMSPoolSupplier
-    if (instance.checkSms) {
-      return instance.checkSms(orderId)
-    }
-    return { success: false, message: "Not supported" }
-  }
-
-  getConfig(): Supplier {
-    return this.supplierConfig
+export interface ProviderStatus {
+  name: string
+  slug: string
+  category: "SMS" | "BOOSTING" | "ACCOUNTS"
+  enabled: boolean
+  configured: boolean
+  health: {
+    status: "healthy" | "unhealthy" | "unknown"
+    latency?: number
+    message?: string
   }
 }
 
-export function createSupplierManager(supplier: Supplier): SupplierManager {
-  return new SupplierManager({ supplier })
+export type ServiceCategory = "SMS" | "BOOSTING" | "LOGS"
+
+class UnifiedSupplierManager {
+  private providers: Map<string, BaseProvider> = new Map()
+  private enabledProviders: Set<string> = new Set()
+  private missingProviders: string[] = []
+
+  register(slug: string, provider: BaseProvider, enabled: boolean = true): void {
+    this.providers.set(slug, provider)
+    if (enabled) {
+      this.enabledProviders.add(slug)
+    }
+  }
+
+  disable(slug: string): void {
+    this.enabledProviders.delete(slug)
+  }
+
+  enable(slug: string): void {
+    if (this.providers.has(slug)) {
+      this.enabledProviders.add(slug)
+    }
+  }
+
+  isEnabled(slug: string): boolean {
+    return this.enabledProviders.has(slug)
+  }
+
+  isConfigured(slug: string): boolean {
+    return this.providers.has(slug)
+  }
+
+  get(slug: string): BaseProvider | undefined {
+    return this.providers.get(slug)
+  }
+
+  listConfigured(): { name: string; slug: string; category: string }[] {
+    return Array.from(this.providers.values()).map(p => ({
+      name: p.name,
+      slug: p.slug,
+      category: p.category,
+    }))
+  }
+
+  listEnabled(): { name: string; slug: string; category: string }[] {
+    return Array.from(this.enabledProviders).map(slug => {
+      const provider = this.providers.get(slug)
+      return provider ? {
+        name: provider.name,
+        slug: provider.slug,
+        category: provider.category,
+      } : null
+    }).filter(Boolean) as { name: string; slug: string; category: string }[]
+  }
+
+  getByCategory(category: "SMS" | "BOOSTING" | "ACCOUNTS"): BaseProvider[] {
+    return Array.from(this.providers.values()).filter(
+      p => p.category === category && this.enabledProviders.has(p.slug)
+    )
+  }
+
+  async getStatus(): Promise<ProviderStatus[]> {
+    const statuses: ProviderStatus[] = []
+
+    for (const [slug, provider] of this.providers) {
+      const health = await provider.healthCheck().catch(() => ({
+        status: "unknown" as const,
+        latency: undefined,
+        message: "Provider check failed"
+      }))
+
+      statuses.push({
+        name: provider.name,
+        slug,
+        category: provider.category,
+        enabled: this.enabledProviders.has(slug),
+        configured: true,
+        health: {
+          status: health.status === "healthy" ? "healthy" : "unhealthy",
+          latency: health.latency,
+          message: health.message,
+        },
+      })
+    }
+
+    return statuses
+  }
+
+  async getBestProvider(category: "SMS" | "BOOSTING" | "ACCOUNTS"): Promise<BaseProvider | null> {
+    const providers = this.getByCategory(category)
+    
+    for (const provider of providers) {
+      try {
+        const health = await provider.healthCheck()
+        if (health.status === "healthy") {
+          return provider
+        }
+      } catch {
+        continue
+      }
+    }
+    
+    return null
+  }
+
+  getMissingProviders(): string[] {
+    return this.missingProviders
+  }
+
+  logMissingProvider(name: string, envKey: string): void {
+    if (!this.missingProviders.includes(name)) {
+      this.missingProviders.push(name)
+      console.warn(`[Supplier] ${name}: Configuration Missing (${envKey} not found in environment)`)
+    }
+  }
 }
+
+export const supplierManager = new UnifiedSupplierManager()
+
+export function getSupplier(slug: string): BaseProvider | undefined {
+  return supplierManager.get(slug)
+}
+
+export function getSuppliersByCategory(category: "SMS" | "BOOSTING" | "ACCOUNTS"): BaseProvider[] {
+  return supplierManager.getByCategory(category)
+}
+
+export async function getBestSupplier(category: "SMS" | "BOOSTING" | "ACCOUNTS"): Promise<BaseProvider | null> {
+  return supplierManager.getBestProvider(category)
+}
+
+export function isSupplierEnabled(slug: string): boolean {
+  return supplierManager.isEnabled(slug)
+}
+
+export function enableSupplier(slug: string): void {
+  supplierManager.enable(slug)
+}
+
+export function disableSupplier(slug: string): void {
+  supplierManager.disable(slug)
+}
+
+export async function getSupplierStatuses(): Promise<ProviderStatus[]> {
+  return supplierManager.getStatus()
+}
+
+export { BaseProvider, type ProviderProduct, type BalanceResult, type CostResult, type OrderResult }

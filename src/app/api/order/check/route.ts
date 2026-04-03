@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createSupplierManager } from "@/lib/suppliers"
-import { ServiceType } from "@prisma/client"
+import { ServiceType, OrderStatus } from "@prisma/client"
+import { getProviderBySlug } from "@/lib/providers"
 
 export async function GET(request: Request) {
   try {
@@ -27,11 +27,12 @@ export async function GET(request: Request) {
         items: true,
         pricingRule: {
           include: {
-            supplierProduct: {
-              include: { supplier: true },
+            providerProduct: {
+              include: { provider: true },
             },
           },
         },
+        provider: true,
       },
     })
 
@@ -44,31 +45,31 @@ export async function GET(request: Request) {
     }
 
     const item = order.items[0]
-    if (!item || !order.externalOrderId || !order.supplierId) {
+    if (!item || !order.externalOrderId || !order.providerId) {
       return NextResponse.json(order)
     }
 
     try {
-      const supplier = await prisma.supplier.findUnique({
-        where: { id: order.supplierId },
+      const provider = await prisma.provider.findUnique({
+        where: { id: order.providerId },
       })
 
-      if (!supplier) {
+      if (!provider) {
         return NextResponse.json(order)
       }
 
-      const manager = createSupplierManager(supplier)
+      const manager = getProviderBySlug(provider.slug)
 
-      if (order.pricingRule?.supplierProduct) {
+      if (order.pricingRule?.providerProduct && manager) {
         if (order.pricingRule?.type === ServiceType.SMS_NUMBER) {
-          const smsResult = await manager.checkSms(order.externalOrderId)
+          const smsResult = await manager.checkOrderStatus(order.externalOrderId)
           
           if (smsResult?.success) {
             await prisma.orderItem.update({
               where: { id: item.id },
               data: {
-                smsCode: smsResult.code,
-                smsText: smsResult.text,
+                smsCode: smsResult.status,
+                smsText: smsResult.message || undefined,
                 smsReceivedAt: new Date(),
                 status: "completed",
               },
@@ -76,26 +77,25 @@ export async function GET(request: Request) {
 
             await prisma.order.update({
               where: { id: orderId },
-              data: { status: "completed", completedAt: new Date() },
+              data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
             })
           }
         }
 
         if (order.pricingRule?.type === ServiceType.SOCIAL_BOOST) {
-          const boostStatus = await manager.checkStatus(order.externalOrderId)
+          const boostStatus = await manager.checkOrderStatus(order.externalOrderId)
           
           await prisma.orderItem.update({
             where: { id: item.id },
             data: {
               boostStatus: boostStatus.status,
-              boostProgress: boostStatus.progress,
             },
           })
 
           if (boostStatus.status === "completed") {
             await prisma.order.update({
               where: { id: orderId },
-              data: { status: "completed", completedAt: new Date() },
+              data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
             })
           }
         }

@@ -16,17 +16,19 @@ export async function GET(request: Request) {
     const rules = await prisma.pricingRule.findMany({
       where,
       include: {
-        supplierProduct: {
-          include: { supplier: true },
+        providerProduct: {
+          include: { provider: true },
         },
+        provider: true,
       },
       orderBy: [{ type: "asc" }, { service: "asc" }],
     })
 
     const serialized = rules.map(rule => ({
       ...rule,
-      costPrice: rule.costPrice.toNumber(),
+      actualCost: rule.actualCost.toNumber(),
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      markupPercentage: rule.markupPercentage.toNumber(),
       profitPerUnit: rule.profitPerUnit.toNumber(),
       profitMargin: rule.profitMargin.toNumber(),
       minPriceNGN: rule.minPriceNGN?.toNumber() ?? null,
@@ -56,21 +58,23 @@ export async function POST(request: Request) {
       platform,
       subService,
       displayName,
-      costPrice,
+      actualCost,
       sellingPriceNGN,
       stockQuantity,
-      supplierProductId,
+      providerProductId,
+      providerId,
     } = body
 
-    if (!type || !service || !displayName || costPrice === undefined || sellingPriceNGN === undefined) {
+    if (!type || !service || !displayName || actualCost === undefined || sellingPriceNGN === undefined) {
       return NextResponse.json(
-        { error: "Type, service, displayName, costPrice, and sellingPriceNGN are required" },
+        { error: "Type, service, displayName, actualCost, and sellingPriceNGN are required" },
         { status: 400 }
       )
     }
 
-    const profit = Number(sellingPriceNGN) - (Number(costPrice) * 1500)
+    const profit = Number(sellingPriceNGN) - (Number(actualCost) * 1500)
     const margin = (profit / Number(sellingPriceNGN)) * 100
+    const markupPct = margin
 
     const rule = await prisma.pricingRule.create({
       data: {
@@ -81,13 +85,15 @@ export async function POST(request: Request) {
         subService,
         displayName,
         description: body.description,
-        costPrice,
-        costCurrency: "USD",
+        actualCost,
+        actualCurrency: "USD",
         sellingPriceNGN,
+        markupPercentage: markupPct,
         profitPerUnit: profit,
         profitMargin: margin,
         stockQuantity: stockQuantity ?? 0,
-        supplierProductId,
+        providerProductId,
+        providerId,
         isActive: true,
         showStock: body.showStock ?? true,
       },
@@ -95,8 +101,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ...rule,
-      costPrice: rule.costPrice.toNumber(),
+      actualCost: rule.actualCost.toNumber(),
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      markupPercentage: rule.markupPercentage.toNumber(),
       profitPerUnit: rule.profitPerUnit.toNumber(),
       profitMargin: rule.profitMargin.toNumber(),
     })
@@ -118,6 +125,7 @@ export async function PUT(request: Request) {
     const {
       id,
       sellingPriceNGN,
+      actualCost,
       isActive,
       stockQuantity,
       showStock,
@@ -132,13 +140,18 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Rule not found" }, { status: 404 })
     }
 
-    const profit = Number(sellingPriceNGN ?? existing.sellingPriceNGN) - (Number(existing.costPrice) * 1500)
-    const margin = (profit / Number(sellingPriceNGN ?? existing.sellingPriceNGN)) * 100
+    const newSellingPrice = sellingPriceNGN ?? Number(existing.sellingPriceNGN)
+    const newCost = actualCost ?? Number(existing.actualCost)
+    const profit = newSellingPrice - (newCost * 1500)
+    const margin = (profit / newSellingPrice) * 100
+    const markupPct = margin
 
     const rule = await prisma.pricingRule.update({
       where: { id },
       data: {
         sellingPriceNGN,
+        actualCost,
+        markupPercentage: markupPct,
         profitPerUnit: profit,
         profitMargin: margin,
         isActive,
@@ -149,8 +162,9 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({
       ...rule,
-      costPrice: rule.costPrice.toNumber(),
+      actualCost: rule.actualCost.toNumber(),
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      markupPercentage: rule.markupPercentage.toNumber(),
       profitPerUnit: rule.profitPerUnit.toNumber(),
       profitMargin: rule.profitMargin.toNumber(),
     })

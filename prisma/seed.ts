@@ -38,6 +38,7 @@ async function main() {
 
   for (const rule of smsRules) {
     const profit = rule.price - (rule.costPrice * 1500)
+    const markupPct = ((rule.price - (rule.costPrice * 1500)) / rule.price) * 100
     await prisma.pricingRule.upsert({
       where: { id: `sms-${rule.service}-${rule.country}` },
       update: {},
@@ -47,9 +48,10 @@ async function main() {
         service: rule.service,
         country: rule.country,
         displayName: rule.name,
-        costPrice: rule.costPrice,
-        costCurrency: 'USD',
+        actualCost: rule.costPrice,
+        actualCurrency: 'USD',
         sellingPriceNGN: rule.price,
+        markupPercentage: markupPct,
         profitPerUnit: profit,
         profitMargin: (profit / rule.price) * 100,
         isActive: true,
@@ -67,6 +69,7 @@ async function main() {
 
   for (const rule of logRules) {
     const profit = rule.price - (rule.costPrice * 1500)
+    const markupPct = ((rule.price - (rule.costPrice * 1500)) / rule.price) * 100
     await prisma.pricingRule.upsert({
       where: { id: `log-${rule.platform}-aged` },
       update: {},
@@ -77,9 +80,10 @@ async function main() {
         service: 'aged_account',
         displayName: rule.name,
         description: 'Pre-created aged social media account',
-        costPrice: rule.costPrice,
-        costCurrency: 'USD',
+        actualCost: rule.costPrice,
+        actualCurrency: 'USD',
         sellingPriceNGN: rule.price,
+        markupPercentage: markupPct,
         profitPerUnit: profit,
         profitMargin: (profit / rule.price) * 100,
         stockQuantity: 50,
@@ -99,6 +103,7 @@ async function main() {
 
   for (const rule of boostRules) {
     const profit = rule.price - (rule.costPrice * 1500)
+    const markupPct = ((rule.price - (rule.costPrice * 1500)) / rule.price) * 100
     await prisma.pricingRule.upsert({
       where: { id: `boost-${rule.platform}-${rule.subService}` },
       update: {},
@@ -109,9 +114,10 @@ async function main() {
         service: rule.subService,
         subService: rule.subService,
         displayName: rule.name,
-        costPrice: rule.costPrice,
-        costCurrency: 'USD',
+        actualCost: rule.costPrice,
+        actualCurrency: 'USD',
         sellingPriceNGN: rule.price,
+        markupPercentage: markupPct,
         profitPerUnit: profit,
         profitMargin: (profit / rule.price) * 100,
         isActive: true,

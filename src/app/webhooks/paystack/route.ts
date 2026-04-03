@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
+import { OrderStatus, PaymentStatus } from "@prisma/client"
 
 export async function POST(request: Request) {
   try {
@@ -47,8 +48,8 @@ export async function POST(request: Request) {
         await prisma.order.update({
           where: { id: order.id },
           data: {
-            status: "processing",
-            paymentStatus: "paid",
+            status: OrderStatus.PROCESSING,
+            paymentStatus: PaymentStatus.PAID,
             paidAt: new Date(),
           },
         })
