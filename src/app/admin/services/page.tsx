@@ -1,32 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
 
-interface SMSService {
+interface ServiceItem {
   id: string
   name: string
-}
-
-interface SocialProduct {
-  id: number
-  name: string
-  category?: string
-  price?: number
-  stock?: number
 }
 
 interface ServicesData {
   sms: {
     supplier: string
-    services: SMSService[]
+    services: ServiceItem[]
     balance: number | null
     error: string | null
   }
   social: {
     supplier: string
-    products: SocialProduct[]
+    products: ServiceItem[]
     balance: number | null
     error: string | null
   }
@@ -34,47 +30,48 @@ interface ServicesData {
 
 export default function AdminServicesPage() {
   const router = useRouter()
-  const [isAdmin, setIsAdmin] = useState(false)
   const [data, setData] = useState<ServicesData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"sms" | "social">("sms")
-  const [mounted, setMounted] = useState(() => typeof window !== "undefined")
+  const [mounted, setMounted] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null)
 
   useEffect(() => {
     setMounted(true)
     const adminId = localStorage.getItem("adminId")
     const adminEmail = localStorage.getItem("adminEmail")
-    
+
     if (!adminId || !adminEmail) {
       router.push("/admin-login")
       return
     }
-    
-    setIsAdmin(true)
-    
-    const headers: Record<string, string> = { "x-admin-id": adminId }
 
-    const fetchServices = async () => {
-      try {
-        const res = await fetch("/api/admin/services", { headers })
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            router.push("/admin-login")
-            return
-          }
-          throw new Error(`HTTP error: ${res.status}`)
-        }
-        const json = await res.json()
+    const headers = { "x-admin-id": adminId }
+
+    fetch("/api/admin/services", { headers })
+      .then(res => res.json())
+      .then(json => {
         setData(json)
-      } catch (error) {
-        console.error("Failed to fetch services:", error)
-      } finally {
         setLoading(false)
-      }
-    }
-
-    fetchServices()
+      })
+      .catch(() => setLoading(false))
   }, [router])
+
+  const filteredServices = useMemo(() => {
+    if (!data?.sms.services) return []
+    const term = searchTerm.toLowerCase()
+    return data.sms.services.filter(s =>
+      s.name.toLowerCase().includes(term) || s.id.toLowerCase().includes(term)
+    )
+  }, [data, searchTerm])
+
+  const filteredProducts = useMemo(() => {
+    if (!data?.social.products) return []
+    const term = searchTerm.toLowerCase()
+    return data.social.products.filter(p =>
+      p.name.toLowerCase().includes(term) || p.id.toLowerCase().includes(term)
+    )
+  }, [data, searchTerm])
 
   if (!mounted || loading) {
     return (
@@ -84,134 +81,137 @@ export default function AdminServicesPage() {
     )
   }
 
-  if (!isAdmin) {
-    return null
-  }
-
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Services & Products</h1>
-
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab("sms")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "sms"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          SMS Services
-        </button>
-        <button
-          onClick={() => setActiveTab("social")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "social"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          Social Media Products
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Services & Products</h1>
+        <p className="text-muted-foreground">View and select from supplier services</p>
       </div>
 
-      {data?.sms.error && activeTab === "sms" && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded mb-4">
-          {data.sms.error}
-        </div>
-      )}
+      <Tabs defaultValue="sms">
+        <TabsList>
+          <TabsTrigger value="sms">SMS Services</TabsTrigger>
+          <TabsTrigger value="social">Social Products</TabsTrigger>
+        </TabsList>
 
-      {data?.social.error && activeTab === "social" && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded mb-4">
-          {data.social.error}
-        </div>
-      )}
+        <TabsContent value="sms" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>SMS Supplier: {data?.sms.supplier}</CardTitle>
+              {data?.sms.balance !== null && data?.sms?.balance !== undefined && (
+                <p className="text-muted-foreground">Balance: ${data.sms.balance.toFixed(2)}</p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Search Services</Label>
+                <Input
+                  placeholder="Search by name or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Select Service</Label>
+                <select
+                  className="w-full p-2 border rounded-md bg-background"
+                  value={selectedService?.id || ""}
+                  onChange={(e) => {
+                    const service = data?.sms?.services?.find(s => s.id === e.target.value)
+                    setSelectedService(service || null)
+                  }}
+                >
+                  <option value="">Select a service...</option>
+                  {filteredServices.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedService && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="font-semibold">{selectedService.name}</p>
+                  <p className="text-sm text-muted-foreground">ID: {selectedService.id}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      {activeTab === "sms" && data?.sms && (
-        <div>
-          <div className="bg-white shadow rounded-lg p-4 mb-6">
-            <h2 className="text-lg font-semibold mb-2">SMS Supplier: {data.sms.supplier}</h2>
-            {data.sms.balance !== null && (
-              <p className="text-gray-600">Balance: ${data.sms.balance.toFixed(2)}</p>
-            )}
-            <p className="text-gray-500 text-sm mt-1">
-              Total Services: {data.sms.services?.length || 0}
-            </p>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>All SMS Services ({filteredServices.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b">
+                      <th className="text-left p-2">ID</th>
+                      <th className="text-left p-2">Service Name</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredServices.slice(0, 200).map(service => (
+                      <tr key={service.id} className="border-b hover:bg-muted cursor-pointer" onClick={() => setSelectedService(service)}>
+                        <td className="p-2 font-mono">{service.id}</td>
+                        <td className="p-2">{service.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service Name</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {data.sms.services?.slice(0, 100).map((service, index) => (
-                  <tr key={service.id || index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {service.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {service.name}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        <TabsContent value="social" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Supplier: {data?.social.supplier}</CardTitle>
+              {data?.social?.balance !== null && data?.social?.balance !== undefined && (
+                <p className="text-muted-foreground">Balance: ${data.social.balance.toFixed(2)}</p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Search Products</Label>
+                <Input
+                  placeholder="Search by name or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      {activeTab === "social" && data?.social && (
-        <div>
-          <div className="bg-white shadow rounded-lg p-4 mb-6">
-            <h2 className="text-lg font-semibold mb-2">Social Supplier: {data.social.supplier}</h2>
-            {data.social.balance !== null && (
-              <p className="text-gray-600">Balance: ${data.social.balance.toFixed(2)}</p>
-            )}
-            <p className="text-gray-500 text-sm mt-1">
-              Total Products: {data.social.products?.length || 0}
-            </p>
-          </div>
-
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {data.social.products?.map((product, index) => (
-                  <tr key={product.id || index}>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {product.id}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {product.name}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {product.category || "-"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {product.price !== undefined ? `$${product.price}` : "-"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {product.stock !== undefined ? product.stock : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Products ({filteredProducts.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="border-b">
+                      <th className="text-left p-2">ID</th>
+                      <th className="text-left p-2">Product Name</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.slice(0, 200).map(product => (
+                      <tr key={product.id} className="border-b hover:bg-muted">
+                        <td className="p-2 font-mono">{product.id}</td>
+                        <td className="p-2">{product.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -12,7 +12,7 @@ export async function POST(
 
     const { id } = await params
     const body = await request.json()
-    const { action, reviewNotes } = body
+    const { action, reviewNotes, amount } = body
 
     if (!action || !["approve", "reject"].includes(action)) {
       return NextResponse.json(
@@ -23,7 +23,7 @@ export async function POST(
 
     const payment = await prisma.manualPayment.findUnique({
       where: { id },
-      include: { order: true },
+      include: { order: true, user: true },
     })
 
     if (!payment) {
@@ -43,25 +43,32 @@ export async function POST(
     })
 
     if (action === "approve") {
-      const order = await prisma.order.findUnique({
+      const finalAmount = amount ? parseFloat(amount) : Number(payment.order.totalRevenue)
+      
+      await prisma.order.update({
         where: { id: payment.orderId },
+        data: {
+          paymentStatus: "paid",
+          totalRevenue: finalAmount,
+          paidAt: new Date(),
+          status: "processing",
+        },
       })
 
-      if (order) {
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: "paid",
-            paidAt: new Date(),
-            status: "processing",
+      await prisma.user.update({
+        where: { id: payment.userId },
+        data: {
+          balance: {
+            increment: finalAmount,
           },
-        })
-      }
+        },
+      })
 
       return NextResponse.json({
         success: true,
         status: newStatus,
-        message: "Payment approved and order marked as paid",
+        message: `Payment approved! ₦${finalAmount.toFixed(2)} added to wallet`,
+        addedAmount: finalAmount,
       })
     }
 
