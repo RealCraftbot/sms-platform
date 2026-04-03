@@ -100,13 +100,9 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 border-r bg-navy/80 p-4 shrink-0">
-        <div className="mb-6 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Shield className="h-8 w-8 text-primary-blue" />
-            <span className="text-lg font-bold text-white">SMSReseller</span>
-          </div>
+        <div className="mb-6">
           <p className="text-light-lavender text-xs">Admin Panel</p>
-          <p className="text-light-lavender/50 text-xs mt-1">{adminEmail}</p>
+          <p className="text-white text-sm mt-1">{adminEmail}</p>
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => (

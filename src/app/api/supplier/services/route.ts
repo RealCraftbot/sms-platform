@@ -49,6 +49,7 @@ export async function GET() {
           code: c.code || "",
         }))
         balance = await smsPool.getBalance()
+        error = null
       } catch (e) {
         error = e instanceof Error ? e.message : "Failed to fetch from supplier"
       }

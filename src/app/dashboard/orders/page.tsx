@@ -23,6 +23,7 @@ interface OrderItem {
 interface Order {
   id: string
   type: string
+  typeLabel?: string
   status: string
   totalAmount: string
   currency: string
@@ -112,7 +113,10 @@ export default function OrdersPage() {
     return order.type === activeTab
   })
 
-  const getTypeLabel = (serviceType: string) => typeLabels[serviceType] || serviceType
+  const getTypeLabel = (order: Order) => {
+    if (order.typeLabel) return order.typeLabel
+    return typeLabels[order.type] || order.type
+  }
 
   const getServiceDisplay = (order: Order) => {
     if (order.displayName) return order.displayName
@@ -122,7 +126,7 @@ export default function OrdersPage() {
       if (order.platform) parts.push(order.platform.charAt(0).toUpperCase() + order.platform.slice(1))
       return parts.join(" ")
     }
-    return getTypeLabel(order.type)
+    return getTypeLabel(order)
   }
 
   const getAmount = (order: Order) => {
@@ -178,7 +182,7 @@ export default function OrdersPage() {
                       <TableCell className="font-mono text-xs text-white">{order.id.slice(0, 8)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {getTypeLabel(order.type)}
+                          {getTypeLabel(order)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-white">
@@ -244,7 +248,7 @@ export default function OrdersPage() {
                   <div className="flex justify-between">
                     <div>
                       <span className="text-light-lavender text-xs">Type</span>
-                      <p className="text-white">{getTypeLabel(order.type)}</p>
+                      <p className="text-white">{getTypeLabel(order)}</p>
                     </div>
                     <div>
                       <span className="text-light-lavender text-xs">Amount</span>

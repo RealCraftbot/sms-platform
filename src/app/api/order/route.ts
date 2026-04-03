@@ -50,19 +50,24 @@ export async function GET(request: Request) {
         || (order.unitSellingPrice ? order.unitSellingPrice.toString() : null)
         || (order.amount ? String(order.amount) : null)
         || "0"
+      
+      const paymentMethodName = order.paymentMethod || order.paymentMethodRel?.name || "Unknown"
+      const isWalletFunding = !order.pricingRule || order.paymentMethod === "Manual" || order.paymentMethod === "Wallet Funding"
+      
       return {
         id: order.id,
-        type: order.type,
+        type: isWalletFunding ? "WALLET_FUNDING" : order.type,
+        typeLabel: isWalletFunding ? "Wallet Funding" : order.type,
         status: order.status,
         totalAmount: totalAmount,
         currency: "NGN",
         createdAt: order.createdAt.toISOString(),
-        paymentMethod: order.paymentMethod || order.paymentMethodRel?.name || "Unknown",
-        service: order.pricingRule?.service || order.pricingRule?.displayName || "Unknown",
+        paymentMethod: paymentMethodName,
+        service: isWalletFunding ? paymentMethodName : (order.pricingRule?.service || order.pricingRule?.displayName || "Unknown"),
         country: order.pricingRule?.country || "",
         platform: order.pricingRule?.platform || "",
         subService: order.pricingRule?.subService || "",
-        displayName: order.pricingRule?.displayName || "",
+        displayName: isWalletFunding ? `Wallet Top-up (${paymentMethodName})` : (order.pricingRule?.displayName || ""),
         items: order.items?.map((item: any) => ({
           id: item.id,
           phoneNumber: item.phoneNumber,
