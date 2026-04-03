@@ -13,15 +13,29 @@ import { Loader2 } from "lucide-react"
 interface Country {
   id: string
   name: string
-  code?: string
-  price: number | null
-  basePrice: number | null
+  code: string
+  adminPrice: number | null
+  supplierPrice: number | null
+  costPrice: number | null
+  stock: number | null
+  available: boolean
 }
 
 interface Service {
   id: string
   name: string
   countries: Country[]
+}
+
+interface ServicesData {
+  services: Service[]
+  supplier: {
+    name: string
+    balance: number | null
+    servicesCount: number
+    countriesCount: number
+  }
+  error: string | null
 }
 
 export default function SMSOrderPage() {
@@ -44,8 +58,8 @@ export default function SMSOrderPage() {
     ]).then(([servicesData, balanceData]) => {
       if (servicesData.services) {
         setServices(servicesData.services)
-        if (servicesData.message) {
-          console.log(servicesData.message)
+        if (servicesData.error) {
+          setError(servicesData.error)
         }
       }
       const balanceValue = balanceData?.balance
@@ -60,39 +74,44 @@ export default function SMSOrderPage() {
     })
   }, [])
 
-  const filteredServices = serviceSearch.trim() === "" 
-    ? services 
+  const filteredServices = serviceSearch.trim() === ""
+    ? services
     : services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
 
   const selectedServiceData = services.find(s => s.id === selectedService)
-  const filteredCountries = selectedServiceData 
-    ? (countrySearch.trim() === "" 
-        ? selectedServiceData.countries 
-        : selectedServiceData.countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())))
+  const filteredCountries = selectedServiceData
+    ? selectedServiceData.countries.filter(c =>
+        c.available && (
+          countrySearch.trim() === "" ||
+          c.name.toLowerCase().includes(countrySearch.toLowerCase())
+        )
+      )
     : []
 
   const selectedCountryData = selectedServiceData?.countries.find(c => c.id === selectedCountry)
-  const orderPrice = selectedCountryData?.price || 0
+  const orderPrice = selectedCountryData?.adminPrice || 0
   const hasSufficientFunds = balance >= orderPrice
 
   const handleOrder = async () => {
     if (!selectedService || !selectedCountry) return
-    if (!selectedCountryData?.price) {
-      setError("This service/country is not configured yet. Please contact admin.")
+    if (!selectedCountryData?.adminPrice) {
+      setError("This service/country is not available. Please contact admin.")
       return
     }
-    
+
     setOrdering(true)
     setError("")
 
     try {
-      const res = await fetch("/api/sms/order", {
+      const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          serviceType: "SMS_NUMBER",
           service: selectedService,
           country: selectedCountry,
-          paymentMethodId: paymentMethod,
+          quantity: 1,
+          paymentMethod: paymentMethod,
         }),
       })
 
@@ -170,7 +189,7 @@ export default function SMSOrderPage() {
                 onChange={(e) => setServiceSearch(e.target.value)}
                 className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
               />
-              <Select value={selectedService} onValueChange={(v) => { setSelectedService(v); setCountrySearch("") }}>
+              <Select value={selectedService} onValueChange={(v) => { setSelectedService(v); setCountrySearch(""); setSelectedCountry(""); }}>
                 <SelectTrigger className="bg-white/10 border-light-lavender/30 text-white">
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
@@ -192,8 +211,8 @@ export default function SMSOrderPage() {
                 disabled={!selectedService}
                 className="bg-white/10 border-light-lavender/30 text-white placeholder:text-light-lavender/50"
               />
-              <Select 
-                value={selectedCountry} 
+              <Select
+                value={selectedCountry}
                 onValueChange={setSelectedCountry}
                 disabled={!selectedService}
               >
@@ -203,7 +222,7 @@ export default function SMSOrderPage() {
                 <SelectContent>
                   {filteredCountries.map(country => (
                     <SelectItem key={country.id} value={country.id}>
-                      {country.name} {country.price ? `₦${country.price}` : "(not configured)"}
+                      {country.name} ({country.code}) - ₦{country.adminPrice}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -216,7 +235,7 @@ export default function SMSOrderPage() {
               <div className="flex flex-wrap justify-between items-center gap-2">
                 <div>
                   <span className="text-light-lavender text-sm">Price: </span>
-                  <span className="font-semibold text-white">₦{selectedCountryData.price || "Not configured"}</span>
+                  <span className="font-semibold text-white">₦{selectedCountryData.adminPrice || "Not available"}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-light-lavender text-sm">Balance: </span>
@@ -225,14 +244,14 @@ export default function SMSOrderPage() {
               </div>
               {paymentMethod === "wallet" && (
                 <div className="pt-2 border-t border-white/10">
-                  {selectedCountryData.price ? (
+                  {selectedCountryData.adminPrice ? (
                     hasSufficientFunds ? (
-                      <Badge className="bg-mint-green/20 text-mint-green">Sufficient funds - You have ₦{(balance - (selectedCountryData.price || 0)).toLocaleString()} remaining</Badge>
+                      <Badge className="bg-mint-green/20 text-mint-green">Sufficient funds - You have ₦{(balance - (selectedCountryData.adminPrice || 0)).toLocaleString()} remaining</Badge>
                     ) : (
-                      <Badge className="bg-red-500/20 text-red-400">Insufficient funds - You need ₦{((selectedCountryData.price || 0) - balance).toLocaleString()} more</Badge>
+                      <Badge className="bg-red-500/20 text-red-400">Insufficient funds - You need ₦{((selectedCountryData.adminPrice || 0) - balance).toLocaleString()} more</Badge>
                     )
                   ) : (
-                    <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">Pricing not configured for this service</Badge>
+                    <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">Service not available</Badge>
                   )}
                 </div>
               )}
@@ -253,9 +272,9 @@ export default function SMSOrderPage() {
             </Select>
           </div>
 
-          <Button 
-            onClick={handleOrder} 
-            disabled={!selectedService || !selectedCountry || !selectedCountryData?.price || ordering || (paymentMethod === "wallet" && !hasSufficientFunds)}
+          <Button
+            onClick={handleOrder}
+            disabled={!selectedService || !selectedCountry || !selectedCountryData?.adminPrice || ordering || (paymentMethod === "wallet" && !hasSufficientFunds)}
             className="w-full bg-mint-green text-navy hover:bg-mint-green/80"
           >
             {ordering ? (
@@ -263,8 +282,8 @@ export default function SMSOrderPage() {
                 <Loader2 className="animate-spin" size={20} />
                 Processing...
               </span>
-            ) : !selectedCountryData?.price ? (
-              "Pricing Not Configured"
+            ) : !selectedCountryData?.adminPrice ? (
+              "Service Not Available"
             ) : paymentMethod === "wallet" && !hasSufficientFunds ? (
               "Insufficient Funds"
             ) : (
