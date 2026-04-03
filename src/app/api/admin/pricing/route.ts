@@ -23,7 +23,17 @@ export async function GET(request: Request) {
       orderBy: [{ type: "asc" }, { service: "asc" }],
     })
 
-    return NextResponse.json(rules)
+    const serialized = rules.map(rule => ({
+      ...rule,
+      costPrice: rule.costPrice.toNumber(),
+      sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      profitPerUnit: rule.profitPerUnit.toNumber(),
+      profitMargin: rule.profitMargin.toNumber(),
+      minPriceNGN: rule.minPriceNGN?.toNumber() ?? null,
+      maxPriceNGN: rule.maxPriceNGN?.toNumber() ?? null,
+    }))
+
+    return NextResponse.json(serialized)
   } catch (error) {
     console.error("Get pricing rules error:", error)
     return NextResponse.json(
@@ -83,7 +93,13 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json(rule)
+    return NextResponse.json({
+      ...rule,
+      costPrice: rule.costPrice.toNumber(),
+      sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      profitPerUnit: rule.profitPerUnit.toNumber(),
+      profitMargin: rule.profitMargin.toNumber(),
+    })
   } catch (error) {
     console.error("Create pricing rule error:", error)
     return NextResponse.json(
@@ -131,7 +147,13 @@ export async function PUT(request: Request) {
       },
     })
 
-    return NextResponse.json(rule)
+    return NextResponse.json({
+      ...rule,
+      costPrice: rule.costPrice.toNumber(),
+      sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
+      profitPerUnit: rule.profitPerUnit.toNumber(),
+      profitMargin: rule.profitMargin.toNumber(),
+    })
   } catch (error) {
     console.error("Update pricing rule error:", error)
     return NextResponse.json(
