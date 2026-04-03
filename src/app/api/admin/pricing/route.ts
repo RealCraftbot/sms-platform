@@ -101,11 +101,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ...rule,
-      actualCost: rule.actualCost.toNumber(),
+      actualCost: rule.actualCost?.toNumber() ?? null,
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
-      markupPercentage: rule.markupPercentage.toNumber(),
-      profitPerUnit: rule.profitPerUnit.toNumber(),
-      profitMargin: rule.profitMargin.toNumber(),
+      markupPercentage: rule.markupPercentage?.toNumber() ?? null,
+      profitPerUnit: rule.profitPerUnit?.toNumber() ?? null,
+      profitMargin: rule.profitMargin?.toNumber() ?? null,
     })
   } catch (error) {
     console.error("Create pricing rule error:", error)
@@ -162,11 +162,11 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({
       ...rule,
-      actualCost: rule.actualCost.toNumber(),
+      actualCost: rule.actualCost?.toNumber() ?? null,
       sellingPriceNGN: rule.sellingPriceNGN.toNumber(),
-      markupPercentage: rule.markupPercentage.toNumber(),
-      profitPerUnit: rule.profitPerUnit.toNumber(),
-      profitMargin: rule.profitMargin.toNumber(),
+      markupPercentage: rule.markupPercentage?.toNumber() ?? null,
+      profitPerUnit: rule.profitPerUnit?.toNumber() ?? null,
+      profitMargin: rule.profitMargin?.toNumber() ?? null,
     })
   } catch (error) {
     console.error("Update pricing rule error:", error)
