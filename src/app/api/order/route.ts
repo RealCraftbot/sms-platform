@@ -45,30 +45,36 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     })
 
-    const serialized = orders.map(order => ({
-      id: order.id,
-      type: order.type,
-      status: order.status,
-      totalAmount: order.totalRevenue?.toString() || order.unitSellingPrice?.toString() || "0",
-      currency: "NGN",
-      createdAt: order.createdAt.toISOString(),
-      paymentMethod: order.paymentMethod || order.paymentMethodRel?.name || "Unknown",
-      service: order.pricingRule?.service || order.pricingRule?.displayName || "Unknown",
-      country: order.pricingRule?.country || "",
-      platform: order.pricingRule?.platform || "",
-      subService: order.pricingRule?.subService || "",
-      displayName: order.pricingRule?.displayName || "",
-      items: order.items.map(item => ({
-        id: item.id,
-        phoneNumber: item.phoneNumber,
-        smsCode: item.smsCode,
-        smsText: item.smsText,
-        status: item.status,
-        deliveredAt: item.deliveredAt?.toISOString(),
-        boostQuantity: item.boostQuantity,
-        deliveredQuantity: item.deliveredAt ? item.boostQuantity : 0,
-      })),
-    }))
+    const serialized = orders.map((order: any) => {
+      const totalAmount = (order.totalRevenue ? order.totalRevenue.toString() : null) 
+        || (order.unitSellingPrice ? order.unitSellingPrice.toString() : null)
+        || (order.amount ? String(order.amount) : null)
+        || "0"
+      return {
+        id: order.id,
+        type: order.type,
+        status: order.status,
+        totalAmount: totalAmount,
+        currency: "NGN",
+        createdAt: order.createdAt.toISOString(),
+        paymentMethod: order.paymentMethod || order.paymentMethodRel?.name || "Unknown",
+        service: order.pricingRule?.service || order.pricingRule?.displayName || "Unknown",
+        country: order.pricingRule?.country || "",
+        platform: order.pricingRule?.platform || "",
+        subService: order.pricingRule?.subService || "",
+        displayName: order.pricingRule?.displayName || "",
+        items: order.items?.map((item: any) => ({
+          id: item.id,
+          phoneNumber: item.phoneNumber,
+          smsCode: item.smsCode,
+          smsText: item.smsText,
+          status: item.status,
+          deliveredAt: item.deliveredAt?.toISOString(),
+          boostQuantity: item.boostQuantity,
+          deliveredQuantity: item.deliveredAt ? item.boostQuantity : 0,
+        })) || [],
+      }
+    })
 
     return NextResponse.json(serialized)
   } catch (error) {

@@ -51,7 +51,7 @@ export async function POST(
           paymentStatus: "paid",
           totalRevenue: finalAmount,
           paidAt: new Date(),
-          status: "processing",
+          status: "approved",
         },
       })
 
