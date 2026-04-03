@@ -68,18 +68,16 @@ export class SMSPool {
 
   async getServices(): Promise<ServiceInfo[]> {
     try {
-      const result = await this.post<Record<string, unknown>>("/service/retrieve_all", {})
-      const services = (result.services || result) as unknown[]
-      if (Array.isArray(services)) {
-        return services.map((s) => {
-          const service = s as Record<string, unknown>
-          return {
-            id: String(service.id || service.service_id || s),
-            name: String(service.name || service.service_name || s),
-          }
-        })
+      const result = await this.post<Record<string, string>>("/service/retrieve_all", {})
+      const services: ServiceInfo[] = []
+      
+      for (const [id, name] of Object.entries(result)) {
+        if (id !== "success" && id !== "message") {
+          services.push({ id, name })
+        }
       }
-      return []
+      
+      return services
     } catch (error) {
       console.error("SMSPool getServices error:", error)
       return []
