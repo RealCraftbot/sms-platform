@@ -11,34 +11,29 @@ import { Loader2 } from "lucide-react"
 
 interface OrderItem {
   id: string
-  serviceType: string
-  service?: string
-  platform?: string
-  subService?: string
-  country?: string
-  quantity: number
-  unitPrice: number
-  status: string
   phoneNumber?: string
-  supplierOrderId?: string
-  otpCode?: string
-  otpText?: string
+  smsCode?: string
+  smsText?: string
+  status: string
+  deliveredAt?: string
+  boostQuantity?: number
   deliveredQuantity?: number
-  startedAt?: string
-  completedAt?: string
 }
 
 interface Order {
   id: string
+  type: string
   status: string
-  totalAmount: number
+  totalAmount: string
   currency: string
   createdAt: string
+  paymentMethod: string
+  service?: string
+  country?: string
+  platform?: string
+  subService?: string
+  displayName?: string
   items: OrderItem[]
-  paymentMethod: {
-    name: string
-    type: string
-  }
 }
 
 const statusColors: Record<string, string> = {
@@ -50,7 +45,6 @@ const statusColors: Record<string, string> = {
   completed: "success",
   cancelled: "destructive",
   failed: "destructive",
-  partial: "warning",
 }
 
 const typeLabels: Record<string, string> = {
@@ -74,7 +68,9 @@ export default function OrdersPage() {
     fetch("/api/order")
       .then(res => res.json())
       .then(data => {
-        setOrders(Array.isArray(data) ? data : [])
+        if (Array.isArray(data)) {
+          setOrders(data)
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -113,10 +109,26 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter(order => {
     if (activeTab === "all") return true
-    return order.items.some(item => item.serviceType === activeTab)
+    return order.type === activeTab
   })
 
   const getTypeLabel = (serviceType: string) => typeLabels[serviceType] || serviceType
+
+  const getServiceDisplay = (order: Order) => {
+    if (order.displayName) return order.displayName
+    if (order.service) {
+      const parts = [order.service.charAt(0).toUpperCase() + order.service.slice(1)]
+      if (order.country) parts.push(order.country.toUpperCase())
+      if (order.platform) parts.push(order.platform.charAt(0).toUpperCase() + order.platform.slice(1))
+      return parts.join(" ")
+    }
+    return getTypeLabel(order.type)
+  }
+
+  const getAmount = (order: Order) => {
+    const amount = parseFloat(order.totalAmount)
+    return isNaN(amount) ? "0" : amount.toLocaleString()
+  }
 
   if (!mounted || loading) {
     return (
@@ -165,43 +177,27 @@ export default function OrdersPage() {
                     <TableRow key={order.id} className="border-light-lavender/10">
                       <TableCell className="font-mono text-xs text-white">{order.id.slice(0, 8)}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {order.items.map((item, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {getTypeLabel(item.serviceType)}
-                            </Badge>
-                          ))}
-                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {getTypeLabel(order.type)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-white">
-                        {order.items.map((item, idx) => (
-                          <div key={idx} className="text-sm capitalize">
-                            {item.platform || item.service || item.serviceType}
-                            {item.subService && ` / ${item.subService}`}
-                          </div>
-                        ))}
+                        {getServiceDisplay(order)}
                       </TableCell>
                       <TableCell>
-                        {order.items.map((item, idx) => (
-                          <div key={idx}>
-                            {item.serviceType === "SMS_NUMBER" && item.phoneNumber && (
-                              <span className="font-mono text-sm text-white">{item.phoneNumber}</span>
-                            )}
-                            {item.serviceType === "SMS_NUMBER" && !item.phoneNumber && (
-                              <span className="text-light-lavender text-sm">-</span>
-                            )}
-                            {item.serviceType === "SOCIAL_LOG" && (
-                              <span className="text-light-lavender text-sm">{item.quantity} account(s)</span>
-                            )}
-                            {item.serviceType === "SOCIAL_BOOST" && (
-                              <span className="text-light-lavender text-sm">
-                                {item.quantity} / {item.deliveredQuantity || 0} delivered
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                        {order.type === "SMS_NUMBER" && order.items[0]?.phoneNumber && (
+                          <span className="font-mono text-sm text-white">{order.items[0].phoneNumber}</span>
+                        )}
+                        {order.type === "SMS_NUMBER" && !order.items[0]?.phoneNumber && (
+                          <span className="text-light-lavender text-sm">-</span>
+                        )}
+                        {order.type !== "SMS_NUMBER" && (
+                          <span className="text-light-lavender text-sm">
+                            {order.items[0]?.deliveredQuantity || 0} delivered
+                          </span>
+                        )}
                       </TableCell>
-                      <TableCell className="text-white">₦{order.totalAmount}</TableCell>
+                      <TableCell className="text-white font-semibold">₦{getAmount(order)}</TableCell>
                       <TableCell>
                         <Badge variant={(statusColors[order.status] || "secondary") as "default" | "secondary" | "destructive" | "outline" | "success"}>
                           {order.status}
@@ -209,7 +205,7 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell className="text-light-lavender">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        {order.status === "paid" && order.items.some(i => i.supplierOrderId) && (
+                        {(order.status === "paid" || order.status === "processing") && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -248,55 +244,39 @@ export default function OrdersPage() {
                   <div className="flex justify-between">
                     <div>
                       <span className="text-light-lavender text-xs">Type</span>
-                      <div className="flex gap-1 mt-1">
-                        {order.items.map((item, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {getTypeLabel(item.serviceType)}
-                          </Badge>
-                        ))}
-                      </div>
+                      <p className="text-white">{getTypeLabel(order.type)}</p>
                     </div>
                     <div>
                       <span className="text-light-lavender text-xs">Amount</span>
-                      <p className="text-white font-semibold">₦{order.totalAmount}</p>
+                      <p className="text-white font-semibold">₦{getAmount(order)}</p>
                     </div>
                   </div>
 
-                  {order.items.map((item, idx) => (
-                    <div key={idx}>
-                      {item.serviceType === "SMS_NUMBER" && (
-                        <>
-                          <div className="text-light-lavender text-xs">Phone</div>
-                          {item.phoneNumber ? (
-                            <p className="font-mono text-white">{item.phoneNumber}</p>
-                          ) : (
-                            <p className="text-light-lavender text-sm">Waiting...</p>
-                          )}
-                          {item.otpCode && (
-                            <div className="mt-2">
-                              <span className="text-light-lavender text-xs">OTP</span>
-                              <p className="text-white font-semibold text-lg">{item.otpCode}</p>
-                            </div>
-                          )}
-                        </>
+                  <div>
+                    <span className="text-light-lavender text-xs">Service</span>
+                    <p className="text-white">{getServiceDisplay(order)}</p>
+                  </div>
+
+                  {order.type === "SMS_NUMBER" && (
+                    <div>
+                      <span className="text-light-lavender text-xs">Phone</span>
+                      {order.items[0]?.phoneNumber ? (
+                        <p className="font-mono text-white">{order.items[0].phoneNumber}</p>
+                      ) : (
+                        <p className="text-yellow-400 text-sm">Waiting for number...</p>
                       )}
-                      {item.serviceType === "SOCIAL_LOG" && (
-                        <p className="text-white">{item.quantity} account(s) - {item.platform}</p>
-                      )}
-                      {item.serviceType === "SOCIAL_BOOST" && (
-                        <>
-                          <p className="text-white capitalize">{item.platform} / {item.subService}</p>
-                          <p className="text-light-lavender text-sm">
-                            {item.deliveredQuantity || 0} / {item.quantity} delivered
-                          </p>
-                        </>
+                      {order.items[0]?.smsText && (
+                        <div className="mt-2 p-2 bg-white/5 rounded">
+                          <span className="text-light-lavender text-xs">SMS:</span>
+                          <p className="font-mono text-white">{order.items[0].smsText}</p>
+                        </div>
                       )}
                     </div>
-                  ))}
+                  )}
 
                   <div className="flex justify-between items-center pt-2 border-t border-light-lavender/10">
                     <span className="text-light-lavender text-xs">{new Date(order.createdAt).toLocaleDateString()}</span>
-                    {order.status === "paid" && order.items.some(i => i.supplierOrderId) && (
+                    {(order.status === "paid" || order.status === "processing") && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -320,28 +300,26 @@ export default function OrdersPage() {
             )}
           </div>
 
-          {filteredOrders.some(o => o.items.some(i => i.otpText)) && (
+          {filteredOrders.some(o => o.items[0]?.smsText) && (
             <Card className="bg-navy/50 border-light-lavender/20">
               <CardHeader>
                 <CardTitle className="text-white">Received SMS Messages</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {filteredOrders.filter(o => o.items.some(i => i.otpText)).map(order => (
-                  order.items.filter(i => i.otpText).map((item, idx) => (
-                    <Alert key={`${order.id}-${idx}`} className="bg-white/5 border-light-lavender/20">
-                      <AlertDescription className="text-white">
-                        <div className="space-y-2">
-                          <div className="flex justify-between flex-wrap gap-2">
-                            <span className="font-semibold">{item.phoneNumber || "Unknown"}</span>
-                            <span className="text-sm text-light-lavender">
-                              {new Date(order.createdAt).toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="text-lg font-mono">{item.otpText}</p>
+                {filteredOrders.filter(o => o.items[0]?.smsText).map(order => (
+                  <Alert key={order.id} className="bg-white/5 border-light-lavender/20">
+                    <AlertDescription className="text-white">
+                      <div className="space-y-2">
+                        <div className="flex justify-between flex-wrap gap-2">
+                          <span className="font-semibold">{order.items[0]?.phoneNumber || "Unknown"}</span>
+                          <span className="text-sm text-light-lavender">
+                            {new Date(order.createdAt).toLocaleString()}
+                          </span>
                         </div>
-                      </AlertDescription>
-                    </Alert>
-                  ))
+                        <p className="text-lg font-mono">{order.items[0]?.smsText}</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
                 ))}
               </CardContent>
             </Card>

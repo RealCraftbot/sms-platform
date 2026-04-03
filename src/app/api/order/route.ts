@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client"
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -45,7 +45,32 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json(orders)
+    const serialized = orders.map(order => ({
+      id: order.id,
+      type: order.type,
+      status: order.status,
+      totalAmount: order.totalRevenue?.toString() || order.unitSellingPrice?.toString() || "0",
+      currency: "NGN",
+      createdAt: order.createdAt.toISOString(),
+      paymentMethod: order.paymentMethod || order.paymentMethodRel?.name || "Unknown",
+      service: order.pricingRule?.service || order.pricingRule?.displayName || "Unknown",
+      country: order.pricingRule?.country || "",
+      platform: order.pricingRule?.platform || "",
+      subService: order.pricingRule?.subService || "",
+      displayName: order.pricingRule?.displayName || "",
+      items: order.items.map(item => ({
+        id: item.id,
+        phoneNumber: item.phoneNumber,
+        smsCode: item.smsCode,
+        smsText: item.smsText,
+        status: item.status,
+        deliveredAt: item.deliveredAt?.toISOString(),
+        boostQuantity: item.boostQuantity,
+        deliveredQuantity: item.deliveredAt ? item.boostQuantity : 0,
+      })),
+    }))
+
+    return NextResponse.json(serialized)
   } catch (error) {
     console.error("Get orders error:", error)
     return NextResponse.json(
@@ -58,7 +83,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -66,18 +91,14 @@ export async function POST(request: Request) {
     const body = await request.json()
     const {
       pricingRuleId,
+      serviceType,
+      service,
+      country,
       quantity = 1,
-      paymentMethodId,
+      paymentMethod,
       targetUrl,
       options,
     } = body
-
-    if (!pricingRuleId || !paymentMethodId) {
-      return NextResponse.json(
-        { error: "Pricing rule and payment method are required" },
-        { status: 400 }
-      )
-    }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email! },
@@ -87,35 +108,67 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const pricingRule = await prisma.pricingRule.findUnique({
-      where: { id: pricingRuleId },
-      include: {
-        supplierProduct: {
-          include: { supplier: true },
+    let pricingRule = null
+
+    if (pricingRuleId) {
+      pricingRule = await prisma.pricingRule.findUnique({
+        where: { id: pricingRuleId },
+        include: {
+          supplierProduct: {
+            include: { supplier: true },
+          },
         },
-      },
-    })
+      })
+    } else if (service && country && serviceType) {
+      pricingRule = await prisma.pricingRule.findFirst({
+        where: {
+          type: serviceType as ServiceType,
+          service: service,
+          country: country,
+          isActive: true,
+        },
+        include: {
+          supplierProduct: {
+            include: { supplier: true },
+          },
+        },
+      })
+    }
 
     if (!pricingRule || !pricingRule.isActive) {
       return NextResponse.json(
-        { error: "Pricing not available" },
+        { error: "Pricing not available for this service" },
         { status: 400 }
       )
     }
 
-    const paymentMethod = await prisma.paymentMethod.findUnique({
-      where: { id: paymentMethodId },
-    })
+    let paymentMethodRecord = null
+    if (paymentMethod) {
+      paymentMethodRecord = await prisma.paymentMethod.findFirst({
+        where: {
+          OR: [
+            { id: paymentMethod },
+            { name: { equals: paymentMethod, mode: "insensitive" } },
+          ],
+        },
+      })
+    }
 
-    if (!paymentMethod) {
-      return NextResponse.json({ error: "Invalid payment method" }, { status: 400 })
+    if (!paymentMethodRecord) {
+      paymentMethodRecord = await prisma.paymentMethod.findFirst({
+        where: { isActive: true },
+      })
+    }
+
+    if (!paymentMethodRecord) {
+      return NextResponse.json({ error: "No payment method available" }, { status: 400 })
     }
 
     const totalRevenue = Number(pricingRule.sellingPriceNGN) * quantity
     const totalCost = Number(pricingRule.costPrice) * quantity
     const profit = Number(pricingRule.profitPerUnit) * quantity
 
-    if (paymentMethod.type === "wallet") {
+    if (paymentMethodRecord.type === "wallet") {
       if (user.balance.lt(totalRevenue)) {
         return NextResponse.json(
           { error: `Insufficient funds. Balance: ₦${user.balance}, Required: ₦${totalRevenue}` },
@@ -189,12 +242,12 @@ export async function POST(request: Request) {
       const order = await prisma.order.create({
         data: {
           userId: user.id,
-          pricingRuleId,
-          paymentMethodId,
-          paymentMethod: paymentMethod.name,
+          pricingRuleId: pricingRule.id,
+          paymentMethodId: paymentMethodRecord.id,
+          paymentMethod: paymentMethodRecord.name,
           paymentStatus: "paid",
           type: pricingRule.type,
-          status: externalOrderId ? "processing" : "completed",
+          status: "processing",
           quantity,
           unitCostPrice: pricingRule.costPrice,
           unitSellingPrice: pricingRule.sellingPriceNGN,
@@ -217,37 +270,48 @@ export async function POST(request: Request) {
       })
 
       return NextResponse.json({
-        ...order,
+        id: order.id,
+        status: order.status,
+        totalAmount: order.totalRevenue.toString(),
         remainingBalance: Number(user.balance) - totalRevenue,
       })
     }
 
-    const order = await prisma.order.create({
-      data: {
-        userId: user.id,
-        pricingRuleId,
-        paymentMethodId,
-        paymentMethod: paymentMethod.name,
-        paymentStatus: "pending",
-        type: pricingRule.type,
-        status: "pending",
-        quantity,
-        unitCostPrice: pricingRule.costPrice,
-        unitSellingPrice: pricingRule.sellingPriceNGN,
-        totalCost,
-        totalRevenue,
-        profit,
-        canCancelUntil: pricingRule.type === ServiceType.SMS_NUMBER
-          ? new Date(Date.now() + 5 * 60 * 1000)
-          : undefined,
-      },
-      include: {
-        pricingRule: true,
-        paymentMethodRel: true,
-      },
-    })
+    if (paymentMethodRecord.type === "manual") {
+      const order = await prisma.order.create({
+        data: {
+          userId: user.id,
+          pricingRuleId: pricingRule.id,
+          paymentMethodId: paymentMethodRecord.id,
+          paymentMethod: paymentMethodRecord.name,
+          paymentStatus: "pending",
+          type: pricingRule.type,
+          status: "pending",
+          quantity,
+          unitCostPrice: pricingRule.costPrice,
+          unitSellingPrice: pricingRule.sellingPriceNGN,
+          totalCost,
+          totalRevenue,
+          profit,
+          canCancelUntil: pricingRule.type === ServiceType.SMS_NUMBER
+            ? new Date(Date.now() + 5 * 60 * 1000)
+            : undefined,
+        },
+        include: {
+          pricingRule: true,
+          paymentMethodRel: true,
+        },
+      })
 
-    return NextResponse.json(order)
+      return NextResponse.json({
+        id: order.id,
+        status: order.status,
+        totalAmount: order.totalRevenue.toString(),
+        message: "Order created. Please upload payment proof.",
+      })
+    }
+
+    return NextResponse.json({ error: "Payment method not supported" }, { status: 400 })
   } catch (error) {
     console.error("Create order error:", error)
     return NextResponse.json(
