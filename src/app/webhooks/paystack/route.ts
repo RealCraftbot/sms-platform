@@ -46,16 +46,18 @@ export async function POST(request: Request) {
 
         await prisma.order.update({
           where: { id: order.id },
-          data: { status: "completed" },
+          data: {
+            status: "processing",
+            paymentStatus: "paid",
+            paidAt: new Date(),
+          },
         })
 
-        if (order.type === "deposit") {
-          await prisma.user.update({
-            where: { id: order.userId },
-            data: { balance: { increment: order.amount } },
-          })
-          console.log(`Added ₦${order.amount} to user wallet`)
-        }
+        await prisma.user.update({
+          where: { id: order.userId },
+          data: { balance: { increment: Number(order.totalRevenue) } },
+        })
+        console.log(`Added ₦${order.totalRevenue} to user wallet`)
       }
     }
 

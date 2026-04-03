@@ -47,37 +47,21 @@ export async function POST(
         where: { id: payment.orderId },
       })
 
-      if (!order) {
-        return NextResponse.json({ error: "Order not found" }, { status: 404 })
-      }
-
-      if (order.type === "deposit") {
-        await prisma.user.update({
-          where: { id: order.userId },
-          data: { balance: { increment: order.amount } },
-        })
-
+      if (order) {
         await prisma.order.update({
           where: { id: order.id },
-          data: { status: "completed" },
-        })
-
-        return NextResponse.json({ 
-          success: true, 
-          status: newStatus,
-          message: `₦${order.amount} added to user wallet` 
+          data: {
+            paymentStatus: "paid",
+            paidAt: new Date(),
+            status: "processing",
+          },
         })
       }
 
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "paid" },
-      })
-
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         status: newStatus,
-        message: "Order marked as paid. User can now use wallet for orders." 
+        message: "Payment approved and order marked as paid",
       })
     }
 

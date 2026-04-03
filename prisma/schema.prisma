@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ServiceType {
+  SMS_NUMBER
+  SOCIAL_LOG
+  SOCIAL_BOOST
+}
+
 model User {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -43,87 +49,243 @@ model PaymentMethod {
   orders    Order[]
 }
 
-model PricingRule {
-  id          String   @id @default(uuid())
-  service     String
-  country     String
-  basePrice   Decimal  @db.Decimal(10, 4)
-  markupType  String
-  markupValue Decimal  @db.Decimal(10, 4)
-  finalPrice  Decimal  @db.Decimal(10, 2)
-  minPrice    Decimal? @db.Decimal(10, 2)
-  maxPrice    Decimal? @db.Decimal(10, 2)
-  isActive    Boolean  @default(true)
+model Supplier {
+  id              String    @id @default(uuid())
+  name            String
+  type            ServiceType
+  baseUrl         String
+  apiKey          String
+  apiSecret       String?
+  isActive        Boolean   @default(true)
+  priority        Int       @default(1)
+  rateLimit       Int       @default(60)
+  lastHealthCheck DateTime?
+  status          String    @default("unknown")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   
-  @@unique([service, country])
+  products        SupplierProduct[]
+  logs            SupplierLog[]
+  orders          Order[]
+  
+  @@map("suppliers")
+}
+
+model SupplierProduct {
+  id              String   @id @default(uuid())
+  supplierId      String
+  externalId      String
+  
+  type            ServiceType
+  service         String
+  subService      String?
+  country         String?
+  platform        String?
+  
+  costPrice       Decimal  @db.Decimal(10, 6)
+  costCurrency    String   @default("USD")
+  
+  stockQuantity   Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  minOrder        Int      @default(1)
+  maxOrder        Int      @default(100)
+  
+  metadata        Json?
+  lastUpdated     DateTime @default(now())
+  
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  pricingRules    PricingRule[]
+  
+  @@unique([supplierId, externalId])
+  @@map("supplier_products")
+}
+
+model PricingRule {
+  id                String   @id @default(uuid())
+  supplierProductId String?
+  type              ServiceType
+  
+  displayName       String
+  description       String?
+  
+  service           String
+  subService        String?
+  country           String?
+  platform          String?
+  
+  costPrice         Decimal  @db.Decimal(10, 6)
+  costCurrency      String   @default("USD")
+  sellingPriceNGN   Decimal  @db.Decimal(10, 2)
+  
+  profitPerUnit     Decimal  @db.Decimal(10, 2)
+  profitMargin      Decimal  @db.Decimal(5, 2)
+  
+  minPriceNGN       Decimal? @db.Decimal(10, 2)
+  maxPriceNGN       Decimal? @db.Decimal(10, 2)
+  
+  stockQuantity     Int      @default(0)
+  isActive         Boolean  @default(true)
+  autoUpdate       Boolean  @default(false)
+  showStock        Boolean  @default(true)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  supplierProduct   SupplierProduct? @relation(fields: [supplierProductId], references: [id])
+  orders            Order[]
+  
+  @@index([type, service])
+  @@index([type, platform])
+  @@map("pricing_rules")
 }
 
 model Order {
-  id              String   @id @default(uuid())
-  userId          String
-  paymentMethodId String
-  type            String
-  status          String
-  amount          Decimal  @db.Decimal(10, 2)
-  currency        String   @default("NGN")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(uuid())
+  userId            String
+  pricingRuleId     String?
   
-  user            User     @relation(fields: [userId], references: [id])
-  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
-  transaction     Transaction?
-  manualPayment   ManualPayment?
-  smsOrder        SMSOrder?
-  logOrder        LogOrder?
+  type              ServiceType
+  status            String
+  
+  quantity          Int      @default(1)
+  
+  unitCostPrice     Decimal  @db.Decimal(10, 6)
+  unitSellingPrice  Decimal  @db.Decimal(10, 2)
+  totalCost         Decimal  @db.Decimal(10, 6)
+  totalRevenue      Decimal  @db.Decimal(10, 2)
+  profit            Decimal  @db.Decimal(10, 2)
+  
+  supplierId        String?
+  supplierName      String?
+  externalOrderId   String?
+  
+  paymentMethodId   String?
+  paymentMethod     String?
+  paymentStatus     String   @default("pending")
+  
+  createdAt         DateTime @default(now())
+  paidAt            DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  
+  canCancelUntil    DateTime?
+  isCancelled       Boolean  @default(false)
+  cancellationReason String?
+  
+  user              User     @relation(fields: [userId], references: [id])
+  pricingRule       PricingRule? @relation(fields: [pricingRuleId], references: [id])
+  supplier          Supplier? @relation(fields: [supplierId], references: [id])
+  paymentMethodRel  PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  transaction       Transaction?
+  manualPayment     ManualPayment?
+  items             OrderItem[]
+  
+  @@index([userId, type])
+  @@index([status])
+  @@map("orders")
 }
 
-model SMSOrder {
+model OrderItem {
+  id            String    @id @default(uuid())
+  orderId       String
+  
+  phoneNumber   String?
+  countryCode   String?
+  smsCode       String?
+  smsText       String?
+  smsReceivedAt DateTime?
+  
+  accountId     String?
+  accountEmail  String?
+  accountPassword String?
+  accountCookies String?
+  accountMeta   Json?
+  
+  targetUrl     String?
+  targetUsername String?
+  boostType     String?
+  boostQuantity Int?
+  boostStatus   String?
+  boostProgress Int?
+  boostStartedAt DateTime?
+  boostCompletedAt DateTime?
+  
+  status        String    @default("pending")
+  deliveredAt   DateTime?
+  expiresAt     DateTime?
+  notes         String?
+  
+  order         Order     @relation(fields: [orderId], references: [id])
+  
+  @@map("order_items")
+}
+
+model Inventory {
   id              String   @id @default(uuid())
-  orderId         String   @unique
-  service         String
-  country         String
-  phoneNumber     String?
-  supplierOrderId String?
-  smsCode         String?
-  smsText         String?
+  type            ServiceType
+  
+  platform        String
+  accountData     Json
+  
+  status          String   @default("available")
+  orderId         String?
+  
+  purchaseCost    Decimal  @db.Decimal(10, 6)
+  supplierName    String
+  
+  purchasedAt     DateTime @default(now())
+  soldAt          DateTime?
   expiresAt       DateTime?
   
-  order           Order    @relation(fields: [orderId], references: [id])
+  @@index([platform, status])
+  @@map("inventory")
 }
 
-model LogCategory {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  isActive  Boolean  @default(true)
+model SupplierLog {
+  id              String   @id @default(uuid())
+  supplierId      String
+  action          String
+  request         Json?
+  response        Json?
+  success         Boolean  @default(true)
+  errorMessage    String?
+  durationMs      Int?
+  createdAt       DateTime @default(now())
   
-  logs      SocialLog[]
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  
+  @@index([supplierId, createdAt])
+  @@map("supplier_logs")
 }
 
-model SocialLog {
-  id          String   @id @default(uuid())
-  categoryId  String
-  platform    String
-  username    String
-  email       String?
-  password    String
-  age         Int?
-  followers   Int?
-  price       Decimal  @db.Decimal(10, 2)
-  costPrice   Decimal  @db.Decimal(10, 2)
-  status      String   @default("available")
-  soldToId    String?
-  soldAt      DateTime?
+model ProfitReport {
+  id              String   @id @default(uuid())
+  period          String
+  date            DateTime
   
-  category    LogCategory @relation(fields: [categoryId], references: [id])
-}
-
-model LogOrder {
-  id      String   @id @default(uuid())
-  orderId String   @unique
-  items   Json
+  totalOrders     Int
+  totalRevenue    Decimal  @db.Decimal(12, 2)
+  totalCost       Decimal  @db.Decimal(12, 6)
+  grossProfit     Decimal  @db.Decimal(12, 2)
   
-  order   Order    @relation(fields: [orderId], references: [id])
+  smsRevenue      Decimal  @db.Decimal(12, 2)
+  smsCost         Decimal  @db.Decimal(12, 6)
+  smsProfit       Decimal  @db.Decimal(12, 2)
+  
+  logsRevenue     Decimal  @db.Decimal(12, 2)
+  logsCost        Decimal  @db.Decimal(12, 6)
+  logsProfit      Decimal  @db.Decimal(12, 2)
+  
+  boostRevenue    Decimal  @db.Decimal(12, 2)
+  boostCost       Decimal  @db.Decimal(12, 6)
+  boostProfit     Decimal  @db.Decimal(12, 2)
+  
+  topProducts     Json?
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([period, date])
+  @@map("profit_reports")
 }
 
 model Transaction {
@@ -156,6 +318,35 @@ model ManualPayment {
   order         Order    @relation(fields: [orderId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
   reviewer      Admin?   @relation(fields: [reviewedBy], references: [id])
+}
+
+model LogCategory {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  
+  logs      SocialLog[]
+}
+
+model SocialLog {
+  id          String   @id @default(uuid())
+  categoryId  String
+  platform    String
+  username    String
+  email       String?
+  password    String
+  age         Int?
+  followers   Int?
+  price       Decimal  @db.Decimal(10, 2)
+  costPrice   Decimal  @db.Decimal(10, 2)
+  status      String   @default("available")
+  soldToId    String?
+  soldAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  category    LogCategory @relation(fields: [categoryId], references: [id])
 }
 
 model Setting {

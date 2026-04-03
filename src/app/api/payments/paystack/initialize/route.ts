@@ -46,7 +46,7 @@ export async function POST(request: Request) {
         userId: user.id,
         provider: "paystack",
         reference,
-        amount: order.amount,
+        amount: order.totalRevenue,
         status: "pending",
       },
     })
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       authorizationUrl: `https://checkout.paystack.com/${reference}`,
       reference: reference,
-      amount: Number(order.amount),
+      amount: Number(order.totalRevenue),
       email: user.email,
     })
   } catch (error) {

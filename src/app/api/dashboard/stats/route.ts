@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { ServiceType } from "@prisma/client"
 
 export async function GET() {
   try {
@@ -24,11 +25,15 @@ export async function GET() {
     })
 
     const smsOrders = await prisma.order.count({
-      where: { userId: user.id, type: "sms" },
+      where: { userId: user.id, type: ServiceType.SMS_NUMBER },
     })
 
     const logOrders = await prisma.order.count({
-      where: { userId: user.id, type: "log" },
+      where: { userId: user.id, type: ServiceType.SOCIAL_LOG },
+    })
+
+    const boostOrders = await prisma.order.count({
+      where: { userId: user.id, type: ServiceType.SOCIAL_BOOST },
     })
 
     const pendingOrders = await prisma.order.count({
@@ -44,9 +49,9 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       take: 5,
       include: {
-        smsOrder: true,
-        logOrder: true,
-        paymentMethod: true,
+        items: true,
+        pricingRule: true,
+        paymentMethodRel: true,
       },
     })
 
@@ -59,9 +64,9 @@ export async function GET() {
     pricingRules.forEach(rule => {
       const current = servicesMap.get(rule.service)
       if (current) {
-        servicesMap.set(rule.service, { name: rule.service, count: current.count + 1 })
+        servicesMap.set(rule.service, { name: rule.displayName, count: current.count + 1 })
       } else {
-        servicesMap.set(rule.service, { name: rule.service, count: 1 })
+        servicesMap.set(rule.service, { name: rule.displayName, count: 1 })
       }
     })
 
@@ -72,16 +77,17 @@ export async function GET() {
       totalOrders,
       smsOrders,
       logOrders,
+      boostOrders,
       pendingOrders,
       completedOrders,
       recentOrders: recentOrders.map(order => ({
         id: order.id,
         type: order.type,
-        amount: order.amount.toString(),
+        amount: order.totalRevenue.toString(),
         status: order.status,
         createdAt: order.createdAt,
-        serviceName: order.smsOrder?.service || null,
-        country: order.smsOrder?.country || null,
+        serviceName: order.pricingRule?.displayName || null,
+        phoneNumber: order.items[0]?.phoneNumber || null,
       })),
       services,
     })

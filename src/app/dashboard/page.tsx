@@ -43,6 +43,7 @@ interface DashboardData {
   totalOrders: number
   smsOrders: number
   logOrders: number
+  boostOrders: number
   pendingOrders: number
   completedOrders: number
   recentOrders: RecentOrder[]
@@ -87,13 +88,14 @@ export default function DashboardPage() {
     { title: "Total Orders", value: data?.totalOrders || 0, icon: <FileText className="h-5 w-5" />, href: "/dashboard/orders" },
     { title: "SMS Orders", value: data?.smsOrders || 0, icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/orders" },
     { title: "Social Logs", value: data?.logOrders || 0, icon: <Users className="h-5 w-5" />, href: "/dashboard/logs" },
+    { title: "Boost Orders", value: data?.boostOrders || 0, icon: <TrendingUp className="h-5 w-5" />, href: "/dashboard/orders" },
   ]
 
   const quickActions = [
     { title: "Order SMS", description: "Get verification numbers", icon: <MessageSquare className="h-6 w-6" />, href: "/dashboard/sms/order", color: "bg-primary-blue" },
     { title: "Buy Social Logs", description: "Purchase accounts", icon: <Users className="h-6 w-6" />, href: "/dashboard/logs", color: "bg-mint-green" },
+    { title: "Boost Social", description: "Get followers, likes", icon: <TrendingUp className="h-6 w-6" />, href: "/dashboard/boost", color: "bg-orange-500" },
     { title: "Add Funds", description: "Top up wallet", icon: <CreditCard className="h-6 w-6" />, href: "/dashboard/wallet", color: "bg-lime-yellow" },
-    { title: "View Orders", description: "Order history", icon: <FileText className="h-6 w-6" />, href: "/dashboard/orders", color: "bg-light-lavender" },
   ]
 
   return (

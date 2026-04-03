@@ -13,7 +13,7 @@ export async function GET(request: Request) {
         order: {
           include: {
             user: true,
-            paymentMethod: true,
+            paymentMethodRel: true,
           },
         },
       },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { ServiceType } from "@prisma/client"
 
 export async function POST(request: Request) {
   try {
@@ -37,14 +38,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Manual payment method not configured" }, { status: 500 })
     }
 
+    const walletPaymentMethod = await prisma.paymentMethod.findFirst({
+      where: { type: "wallet" },
+    })
+
+    const depositRule = await prisma.pricingRule.findFirst({
+      where: { type: ServiceType.SMS_NUMBER, service: "deposit" },
+    })
+
     const order = await prisma.order.create({
       data: {
         userId: user.id,
         paymentMethodId: paymentMethod.id,
-        type: "deposit",
+        paymentMethod: "Manual Transfer",
+        pricingRuleId: depositRule?.id,
+        type: ServiceType.SMS_NUMBER,
         status: "awaiting_approval",
-        amount,
-        currency: "NGN",
+        unitSellingPrice: amount,
+        totalRevenue: amount,
+        quantity: 1,
+        unitCostPrice: 0,
+        totalCost: 0,
+        profit: 0,
         manualPayment: {
           create: {
             userId: user.id,
